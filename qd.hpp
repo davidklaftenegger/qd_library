@@ -4,6 +4,7 @@
 #include<array>
 #include<atomic>
 #include<future>
+#include<numeric>
 #include<thread>
 #include<utility>
 
@@ -33,10 +34,10 @@ class tatas_lock {
  * @brief a buffer-based tantrum queue
  * @tparam ARRAY_SIZE the buffer's size in bytes
  */
-template<int ARRAY_SIZE>
+template<long ARRAY_SIZE>
 class buffer_queue {
 	/** type for the size field for queue entries, loads must not be optimized away in flush */
-	typedef std::atomic<int> sizetype;
+	typedef std::atomic<long> sizetype;
 	
 	/** type for function pointers to be stored in this queue */
 	typedef std::function<void(char*)> ftype;
@@ -46,7 +47,7 @@ class buffer_queue {
 	static const bool SUCCESS = true;
 
 	/** counter for how much of the buffer is currently in use; offset to free area in buffer_array */
-	std::atomic<int> counter;
+	std::atomic<long> counter;
 	/** optimization flag: no writes when queue in known-closed state */
 	std::atomic<bool> closed; /*TODO atomic_flag? */
 	/** the buffer for entries to this queue */
@@ -59,6 +60,13 @@ class buffer_queue {
 			closed.store(false, std::memory_order_relaxed);
 		}
 
+		void forwardall(long) {};
+		template<typename P, typename... Ts>
+		void forwardall(long offset, P&& p, Ts&&... ts) {
+			auto ptr = reinterpret_cast<P*>(&buffer_array[offset]);
+			new (ptr) P(std::forward<P>(p));
+			forwardall(offset+sizeof(p), std::forward<Ts>(ts)...);
+		}
 		/**
 		 * @brief enqueues an entry
 		 * @tparam P return type of associated function
@@ -66,51 +74,50 @@ class buffer_queue {
 		 * @param p promise for return value
 		 * @return SUCCESS on successful storing in queue, CLOSED otherwise
 		 */
-		template<typename P>
-		bool enqueue(std::function<void(char*)> op, std::promise<P> p) {
+		template<typename P, typename... Ps>
+		bool enqueue(ftype op, std::promise<P>&& p, Ps&&... ps) {
 			if(closed.load()) { //TODO MEMORDER
 				return CLOSED;
 			}
-			/* entry size = size of size + size of wrapper functor + size of promise */
-			const int size = sizeof(sizetype) + sizeof(op) + sizeof(p); // TODO pad to next sizeof(sizetype)?
+			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
+			std::initializer_list<std::size_t> sizeList = {sizeof(Ps)...};
+			const long size = sizeof(sizetype) + sizeof(op) + sizeof(p) + std::accumulate(sizeList.begin(), sizeList.end(), 0); // TODO pad to next sizeof(sizetype)?
 			/* get memory in buffer */
-			int index = counter.fetch_add(size, std::memory_order_relaxed);
+			long index = counter.fetch_add(size, std::memory_order_relaxed);
 			if(index+size <= ARRAY_SIZE) {
-				/* enough memory available: move op and p to buffer, then set size of entry */
-				auto opptr = reinterpret_cast<decltype(op)*>(&buffer_array[index + sizeof(sizetype)]);
-				new (opptr) decltype(op)(std::move(op));
-				auto pptr = reinterpret_cast<decltype(p)*>(&buffer_array[index + sizeof(op) + sizeof(sizetype)]);
-				new (pptr) decltype(p)(std::move(p));
-//				opptr->swap(op);
-//				pptr->swap(p);
+				/* enough memory available: move op, p and parameters to buffer, then set size of entry */
+				forwardall(index+sizeof(sizetype), std::move(op), std::move(ps)..., std::forward<std::promise<P>>(p));
+
 				reinterpret_cast<sizetype*>(&buffer_array[index])->store(size, std::memory_order_release);
 				return SUCCESS;
 			} else {
 				/* not enough memory available: avoid deadlock in flush by setting special value */
-				if(index < ARRAY_SIZE-sizeof(sizetype)) reinterpret_cast<sizetype*>(&buffer_array[index])->store(ARRAY_SIZE+1, std::memory_order_release); // TODO MEMORDER
+				if(index < static_cast<long>(ARRAY_SIZE - sizeof(sizetype))) {
+					reinterpret_cast<sizetype*>(&buffer_array[index])->store(ARRAY_SIZE+1, std::memory_order_release); // TODO MEMORDER
+				}
 				return CLOSED;
 			}
 		}
 
 		/** execute all stored operations, leave queue in closed state */
 		void flush() {
-			int todo = 0;
+			long todo = 0;
 			bool open = true;
 			while(open) {
-				int done = todo;
+				long done = todo;
 				todo = counter.load(std::memory_order_relaxed);
 				if(todo == done) { /* close queue */
 					todo = counter.exchange(ARRAY_SIZE, std::memory_order_relaxed);
 					open = false;
 					closed.store(true, std::memory_order_relaxed);
 				}
-				if(todo >= ARRAY_SIZE - sizeof(ftype) - sizeof(sizetype)) { /* queue closed */
+				if(todo >= static_cast<long>(ARRAY_SIZE - sizeof(ftype) - sizeof(sizetype))) { /* queue closed */
 					todo = ARRAY_SIZE - sizeof(ftype) - sizeof(sizetype);
 					open = false;
 					closed.store(true, std::memory_order_relaxed);
 				}
-				int last_size = 0;
-				for(int index = done; index < todo; index+=last_size) {
+				long last_size = 0;
+				for(long index = done; index < todo; index+=last_size) {
 					/* synchronization on entry size field: 0 until entry available */
 					do {
 						last_size = reinterpret_cast<sizetype*>(&buffer_array[index])->load(std::memory_order_acquire);
@@ -136,8 +143,19 @@ class buffer_queue {
 		}
 };
 
+template<typename... Ts>
+class types;
+template<typename T, typename... Ts>
+class types<T, Ts...> {
+	public:
+		typedef T type;
+		typedef types<Ts...> tail;
+};
+template<>
+class types<> {};
+
 /** wrapper function for non-void operations */
-template<typename R, typename... Ps>
+template<typename Types, typename R, typename... Ps>
 void delegated_function(char* pptr, std::function<R(Ps...)> f, Ps... ps) {
 	typedef std::promise<R> promise;
 	auto pp = reinterpret_cast<promise*>(pptr);
@@ -146,9 +164,17 @@ void delegated_function(char* pptr, std::function<R(Ps...)> f, Ps... ps) {
 	pp->~promise();
 }
 
+template<typename Types, typename... Ps>
+typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delegated_function(char* buf, Ps... ps) {
+	typedef typename Types::type T;
+	auto ptr = reinterpret_cast<T*>(buf);
+	delegated_function<typename Types::tail>(buf+sizeof(T), std::move(ps)..., std::move(*ptr));
+}
+
 /** wrapper function for void operations */
-template<typename... Ps>
-void delegated_void_function(char* pptr, std::function<void(Ps...)> f, Ps... ps) {
+template<typename Types, typename R, typename... Ps>
+void delegated_void_function(char* pptr, std::function<R(Ps...)> f, Ps... ps) {
+	static_assert(std::is_same<R, void>::value, "void code path  used for non-void function");
 	typedef std::promise<void> promise;
 	auto pp = reinterpret_cast<promise*>(pptr);
 	promise p(std::move(*pp));
@@ -156,6 +182,13 @@ void delegated_void_function(char* pptr, std::function<void(Ps...)> f, Ps... ps)
 	p.set_value();
 	pp->~promise();
 }
+template<typename Types, typename... Ps>
+typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delegated_void_function(char* buf, Ps... ps) {
+	typedef typename Types::type T;
+	auto ptr = reinterpret_cast<T*>(buf);
+	delegated_void_function<typename Types::tail>(buf+sizeof(T), std::move(ps)..., std::move(*ptr));
+}
+
 
 /**
  * @brief queue delegation lock implementation
@@ -194,6 +227,13 @@ class qdlock_impl {
 				std::this_thread::yield();
 			}
 		}
+
+		void lock() {
+			mutex_lock.lock();
+		}
+		void unlock() {
+			mutex_lock.unlock();
+		}
 	private:
 		/** executes the operation */
 		template<typename R, typename... Ps>
@@ -209,16 +249,14 @@ class qdlock_impl {
 		/** maybe enqueues the operation */
 		template<typename R, typename... Ps>
 		bool enqueue(std::promise<R> r, std::function<R(Ps...)> f, Ps... ps) {
-			std::function<void(char*, std::function<R(Ps...)>, Ps...)> fn = delegated_function<R, Ps...>;
-			std::function<void(char*)> d = std::bind(fn, std::placeholders::_1, f, ps...);
-			return delegation_queue.enqueue(d, std::move(r));
+			std::function<void(char*)> d(delegated_function<types<std::function<R(Ps...)>, Ps...>>);
+			return delegation_queue.enqueue(d, std::move(r), f, ps...);
 		}
 		/** alternative for operations which return void */
 		template<typename... Ps>
 		bool enqueue(std::promise<void> r, std::function<void(Ps...)> f, Ps... ps) {
-			std::function<void(char*, std::function<void(Ps...)>, Ps...)> fn = delegated_void_function<Ps...>;
-			std::function<void(char*)> d = std::bind(fn, std::placeholders::_1, f, ps...);
-			return delegation_queue.enqueue(d, std::move(r));
+			std::function<void(char*)> d = delegated_void_function<types<std::function<void(Ps...)>, Ps...>>;
+			return delegation_queue.enqueue(d, std::move(r), f, ps...);
 		}
 };
 
