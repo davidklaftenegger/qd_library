@@ -40,7 +40,8 @@ class buffer_queue {
 	typedef std::atomic<long> sizetype;
 	
 	/** type for function pointers to be stored in this queue */
-	typedef std::function<void(char*)> ftype;
+//	typedef std::function<void(char*)> ftype;
+	typedef void(*ftype)(char*);
 
 	/* some constants */
 	static const bool CLOSED = false;
@@ -54,6 +55,7 @@ class buffer_queue {
 	std::array<char, ARRAY_SIZE> buffer_array;
 
 	public:
+		buffer_queue() : counter(ARRAY_SIZE), closed(true) {}
 		/** opens the queue */
 		void open() {
 			counter.store(0, std::memory_order_relaxed);
@@ -75,8 +77,8 @@ class buffer_queue {
 		 * @return SUCCESS on successful storing in queue, CLOSED otherwise
 		 */
 		template<typename P, typename... Ps>
-		bool enqueue(ftype op, std::promise<P>&& p, Ps&&... ps) {
-			if(closed.load()) { //TODO MEMORDER
+		bool enqueue(void (*op)(char*), std::promise<P>&& p, Ps&&... ps) {
+			if(closed.load(std::memory_order_relaxed)) { //TODO MEMORDER
 				return CLOSED;
 			}
 			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
@@ -136,7 +138,7 @@ class buffer_queue {
 					(*fun)(&buffer_array[index + sizeof(sizetype) + sizeof(*fun)]);
 
 					/* cleanup: call destructor of (now empty) functor and clear buffer area */
-					fun->~ftype();
+//					fun->~ftype();
 					std::fill(&buffer_array[index], &buffer_array[index+last_size], 0);
 				}
 			}
@@ -156,7 +158,7 @@ class types<> {};
 
 /** wrapper function for non-void operations */
 template<typename Types, typename R, typename... Ps>
-void delegated_function(char* pptr, std::function<R(Ps...)> f, Ps... ps) {
+void delegated_function(char* pptr, R (*f)(Ps...), Ps... ps) {
 	typedef std::promise<R> promise;
 	auto pp = reinterpret_cast<promise*>(pptr);
 	promise p(std::move(*pp));
@@ -173,7 +175,7 @@ typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delega
 
 /** wrapper function for void operations */
 template<typename Types, typename R, typename... Ps>
-void delegated_void_function(char* pptr, std::function<R(Ps...)> f, Ps... ps) {
+void delegated_void_function(char* pptr, R (*f)(Ps...), Ps... ps) {
 	static_assert(std::is_same<R, void>::value, "void code path  used for non-void function");
 	typedef std::promise<void> promise;
 	auto pp = reinterpret_cast<promise*>(pptr);
@@ -191,14 +193,49 @@ typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delega
 
 
 /**
+ * @brief queue delegation base class
+ * @tparam MLock mutual exclusion lock
+ * @tparam DQueue delegation queue
+ */
+template<class MLock, class DQueue>
+class qdlock_base {
+	protected:
+		MLock mutex_lock;
+		DQueue delegation_queue;
+		
+		/** executes the operation */
+		template<typename R, typename... Ps>
+		void execute(std::promise<R> r, R (*f)(Ps...), Ps... ps) {
+			r.set_value(f(ps...));
+		}
+		/** alternative for operations which return void */
+		template<typename... Ps>
+		void execute(std::promise<void> r, void (*f)(Ps...), Ps... ps) {
+			f(ps...);
+			r.set_value();
+		}
+		/** maybe enqueues the operation */
+		template<typename R, typename... Ps>
+		bool enqueue(std::promise<R> r, R (*f)(Ps...), Ps... ps) {
+			void (*d)(char*) = delegated_function<types<R (*)(Ps...), Ps...>>;
+			return delegation_queue.enqueue(d, std::move(r), f, ps...);
+		}
+		/** alternative for operations which return void */
+		template<typename... Ps>
+		bool enqueue(std::promise<void> r, void (*f)(Ps...), Ps... ps) {
+			void (*d)(char*) = delegated_void_function<types<void (*)(Ps...), Ps...>>;
+			return delegation_queue.enqueue(d, std::move(r), f, ps...);
+		}
+};
+
+
+/**
  * @brief queue delegation lock implementation
  * @tparam MLock mutual exclusion lock
  * @tparam DQueue delegation queue
  */
 template<class MLock, class DQueue>
-class qdlock_impl {
-	MLock mutex_lock;
-	DQueue delegation_queue;
+class qdlock_impl : private qdlock_base<MLock, DQueue> {
 	public:
 		/**
 		 * @brief delegate function
@@ -209,18 +246,18 @@ class qdlock_impl {
 		 * @return a future for return value of delegated operation
 		 */
 		template<typename R, typename... Ps>
-		std::future<R> delegate(std::function<R(Ps...)> f, Ps... ps) {
+		std::future<R> delegate(R (*f)(Ps...), Ps... ps) {
 			while(true) {
 				std::promise<R> result;
 				auto future = result.get_future();
-				if(mutex_lock.try_lock()) {
-					delegation_queue.open();
-					execute(std::move(result), f, ps...);
-					delegation_queue.flush();
-					mutex_lock.unlock();
+				if(this->mutex_lock.try_lock()) {
+					this->delegation_queue.open();
+					this->execute(std::move(result), f, ps...);
+					this->delegation_queue.flush();
+					this->mutex_lock.unlock();
 					return future;
 				} else {
-					if(enqueue(std::move(result), f, ps...)) {
+					if(this->enqueue(std::move(result), f, ps...)) {
 						return future;
 					}
 				}
@@ -229,37 +266,110 @@ class qdlock_impl {
 		}
 
 		void lock() {
-			mutex_lock.lock();
+			this->mutex_lock.lock();
 		}
 		void unlock() {
-			mutex_lock.unlock();
-		}
-	private:
-		/** executes the operation */
-		template<typename R, typename... Ps>
-		void execute(std::promise<R> r, std::function<R(Ps...)> f, Ps... ps) {
-			r.set_value(f(ps...));
-		}
-		/** alternative for operations which return void */
-		template<typename... Ps>
-		void execute(std::promise<void> r, std::function<void(Ps...)> f, Ps... ps) {
-			f(ps...);
-			r.set_value();
-		}
-		/** maybe enqueues the operation */
-		template<typename R, typename... Ps>
-		bool enqueue(std::promise<R> r, std::function<R(Ps...)> f, Ps... ps) {
-			std::function<void(char*)> d(delegated_function<types<std::function<R(Ps...)>, Ps...>>);
-			return delegation_queue.enqueue(d, std::move(r), f, ps...);
-		}
-		/** alternative for operations which return void */
-		template<typename... Ps>
-		bool enqueue(std::promise<void> r, std::function<void(Ps...)> f, Ps... ps) {
-			std::function<void(char*)> d = delegated_void_function<types<std::function<void(Ps...)>, Ps...>>;
-			return delegation_queue.enqueue(d, std::move(r), f, ps...);
+			this->mutex_lock.unlock();
 		}
 };
 
+template<int GROUPS>
+class reader_groups {
+	std::array<std::atomic<int>, GROUPS> counters;
+	public:
+		bool query() {
+			for(std::atomic<int>& counter : counters)
+				if(counter.load() > 0) return true;
+			return false;
+		}
+		void arrive() {
+			counters[0] += 1;
+		}
+		void depart() {
+			counters[0] -= 1;
+		}
+};
+
+template<class MLock, class DQueue, class RIndicator, int READ_PATIENCE_LIMIT>
+class mrqdlock_impl : private qdlock_base<MLock, DQueue> {
+	std::atomic<int> writeBarrier;
+	RIndicator reader_indicator;
+	public:
+		/**
+		 * @brief delegate function
+		 * @tparam R return type of delegated operation
+		 * @tparam Ps parameter types of delegated operation
+		 * @param f the delegated operation
+		 * @param ps the parameters for the delegated operation
+		 * @return a future for return value of delegated operation
+		 */
+		template<typename R, typename... Ps>
+		std::future<R> delegate(R (*f)(Ps...), Ps... ps) {
+			while(writeBarrier.load() > 0) {
+				std::this_thread::yield();
+			}
+			while(true) {
+				std::promise<R> result;
+				auto future = result.get_future();
+				if(this->mutex_lock.try_lock()) {
+					this->delegation_queue.open();
+					while(reader_indicator.query()) {
+						std::this_thread::yield();
+					}
+					this->execute(std::move(result), f, ps...);
+					this->delegation_queue.flush();
+					this->mutex_lock.unlock();
+					return future;
+				} else {
+					if(this->enqueue(std::move(result), f, ps...)) {
+						return future;
+					}
+				}
+				std::this_thread::yield();
+			}
+		}
+
+		void lock() {
+			while(writeBarrier.load() > 0) {
+				std::this_thread::yield();
+			}
+			this->mutex_lock.lock();
+			this->delegation_queue.open();
+			while(reader_indicator.query()) {
+				std::this_thread::yield();
+			}
+		}
+		void unlock() {
+			this->delegation_queue.flush();
+			this->mutex_lock.unlock();
+		}
+
+		void rlock() {
+			bool bRaised = false;
+			int readPatience = 0;
+start:
+			reader_indicator.arrive();
+			if(this->mutex_lock.is_locked()) {
+				reader_indicator.depart();
+				while(this->mutex_lock.is_locked()) {
+					std::this_thread::yield();
+					if((readPatience == READ_PATIENCE_LIMIT) && !bRaised) {
+						writeBarrier.fetch_add(1);
+						bRaised = true;
+					}
+					readPatience += 1;
+				}
+				goto start;
+			}
+			if(bRaised) writeBarrier.fetch_sub(1);
+		}
+		void runlock() {
+			reader_indicator.depart();
+		}
+
+};
+
 using qdlock = qdlock_impl<tatas_lock, buffer_queue<16384>>;
+using mrqdlock = mrqdlock_impl<tatas_lock, buffer_queue<16384>, reader_groups<64>, 65536>;
 
 #endif
