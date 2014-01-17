@@ -3,10 +3,17 @@
 
 #include<array>
 #include<atomic>
+#include<cassert>
+#include<cstddef>
 #include<future>
 #include<numeric>
 #include<thread>
 #include<utility>
+
+#include "padded.hpp"
+#include "threadid.hpp"
+
+static void pause();
 
 class tatas_lock {
 	std::atomic<bool> locked; /* TODO can std::atomic_flag be used? */
@@ -14,18 +21,18 @@ class tatas_lock {
 		tatas_lock() : locked(false) {};
 		tatas_lock(tatas_lock&) = delete; /* TODO? */
 		bool try_lock() {
-			if(locked) return false;
-			return !locked.exchange(true);
+			if(locked.load(std::memory_order_acquire)) return false;
+			return !locked.exchange(true, std::memory_order_release);
 		}
 		void unlock() {
-			locked = false;
+			locked.store(false, std::memory_order_release);
 		}
 		bool is_locked() {
-			return locked;
+			return locked.load(std::memory_order_acquire);
 		}
 		void lock() {
 			while(!try_lock()) {
-				std::this_thread::yield();
+				pause();
 			}
 		}
 };
@@ -76,19 +83,19 @@ class buffer_queue {
 		 * @param p promise for return value
 		 * @return SUCCESS on successful storing in queue, CLOSED otherwise
 		 */
-		template<typename P, typename... Ps>
-		bool enqueue(void (*op)(char*), std::promise<P>&& p, Ps&&... ps) {
+		template<typename... Ps>
+		bool enqueue(void (*op)(char*), Ps&&... ps) {
 			if(closed.load(std::memory_order_relaxed)) { //TODO MEMORDER
 				return CLOSED;
 			}
 			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
 			std::initializer_list<std::size_t> sizeList = {sizeof(Ps)...};
-			const long size = sizeof(sizetype) + sizeof(op) + sizeof(p) + std::accumulate(sizeList.begin(), sizeList.end(), 0); // TODO pad to next sizeof(sizetype)?
+			const long size = sizeof(sizetype) + sizeof(op) + std::accumulate(sizeList.begin(), sizeList.end(), 0); // TODO pad to next sizeof(sizetype)?
 			/* get memory in buffer */
 			long index = counter.fetch_add(size, std::memory_order_relaxed);
 			if(index+size <= ARRAY_SIZE) {
 				/* enough memory available: move op, p and parameters to buffer, then set size of entry */
-				forwardall(index+sizeof(sizetype), std::move(op), std::move(ps)..., std::forward<std::promise<P>>(p));
+				forwardall(index+sizeof(sizetype), std::move(op), std::move(ps)...);
 
 				reinterpret_cast<sizetype*>(&buffer_array[index])->store(size, std::memory_order_release);
 				return SUCCESS;
@@ -97,6 +104,7 @@ class buffer_queue {
 				if(index < static_cast<long>(ARRAY_SIZE - sizeof(sizetype))) {
 					reinterpret_cast<sizetype*>(&buffer_array[index])->store(ARRAY_SIZE+1, std::memory_order_release); // TODO MEMORDER
 				}
+				//std::cout << "UEHIEÜPUBGRIBRIPUBIUBERN\n";
 				return CLOSED;
 			}
 		}
@@ -157,26 +165,28 @@ template<>
 class types<> {};
 
 /** wrapper function for non-void operations */
-template<typename Types, typename R, typename... Ps>
-void delegated_function(char* pptr, R (*f)(Ps...), Ps... ps) {
+template<typename Types, typename Function, Function f, typename... Ps>
+typename std::enable_if<std::is_same<types<>, Types>::value, void>::type delegated_function(char* pptr, Ps&&... ps) {
+	typedef decltype(f(ps...)) R;
 	typedef std::promise<R> promise;
 	auto pp = reinterpret_cast<promise*>(pptr);
 	promise p(std::move(*pp));
-	p.set_value(f(ps...));
+	p.set_value(f(std::forward<Ps>(ps)...));
 	pp->~promise();
 }
 
-template<typename Types, typename... Ps>
-typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delegated_function(char* buf, Ps... ps) {
+template<typename Types, typename Function, Function f, typename... Ps>
+typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delegated_function(char* buf, Ps&&... ps) {
 	typedef typename Types::type T;
 	auto ptr = reinterpret_cast<T*>(buf);
-	delegated_function<typename Types::tail>(buf+sizeof(T), std::move(ps)..., std::move(*ptr));
+	delegated_function<typename Types::tail, Function, f>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
 }
 
 /** wrapper function for void operations */
-template<typename Types, typename R, typename... Ps>
-void delegated_void_function(char* pptr, R (*f)(Ps...), Ps... ps) {
-	static_assert(std::is_same<R, void>::value, "void code path  used for non-void function");
+template<typename Types, typename Function, Function f, typename... Ps>
+typename std::enable_if<std::is_same<types<>, Types>::value, void>::type delegated_void_function(char* pptr, Ps&&... ps) {
+	typedef decltype(f(ps...)) R;
+	static_assert(std::is_same<R, void>::value, "void code path used for non-void function");
 	typedef std::promise<void> promise;
 	auto pp = reinterpret_cast<promise*>(pptr);
 	promise p(std::move(*pp));
@@ -184,13 +194,75 @@ void delegated_void_function(char* pptr, R (*f)(Ps...), Ps... ps) {
 	p.set_value();
 	pp->~promise();
 }
-template<typename Types, typename... Ps>
-typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delegated_void_function(char* buf, Ps... ps) {
+template<typename Types, typename Function, Function f, typename... Ps>
+typename std::enable_if<!std::is_same<types<>, Types>::value, void>::type delegated_void_function(char* buf, Ps&&... ps) {
 	typedef typename Types::type T;
 	auto ptr = reinterpret_cast<T*>(buf);
-	delegated_void_function<typename Types::tail>(buf+sizeof(T), std::move(ps)..., std::move(*ptr));
+	delegated_void_function<typename Types::tail, Function, f>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
 }
 
+/** wrapper function for operations without associated future */
+template<typename Types, typename Function, Function f, typename O, typename... Ps>
+auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		std::is_same<types<>, Types>::value
+		&& !std::is_same<Function, std::nullptr_t>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	(o.*f)(std::forward<Ps>(ps)...);
+}
+template<typename Types, typename Function, Function f, typename... Ps>
+auto delegated_function_nofuture(char*, Ps&&... ps)
+-> typename std::enable_if<std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
+{
+	f(std::forward<Ps>(ps)...);
+}
+template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
+auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
+-> typename std::enable_if<std::is_same<types<>, Types>::value && std::is_same<Ignored, std::nullptr_t>::value, void>::type
+{
+	f(std::forward<Ps>(ps)...);
+}
+template<typename Types, typename Function, Function f, typename... Ps>
+auto delegated_function_nofuture(char* buf, Ps&&... ps)
+-> typename std::enable_if<!std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
+{
+	typedef typename Types::type T;
+	auto ptr = reinterpret_cast<T*>(buf);
+	delegated_function_nofuture<typename Types::tail, Function, f>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
+}
+template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
+auto delegated_function_nofuture(char* buf, Ps&&... ps)
+-> typename std::enable_if<!std::is_same<types<>, typename Types::tail>::value, void>::type
+{
+	typedef typename Types::type T;
+	auto ptr = reinterpret_cast<T*>(buf);
+	delegated_function_nofuture<typename Types::tail, Ignored, i>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
+}
+
+template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
+auto delegated_function_nofuture(char* buf, Ps&&... ps)
+-> typename std::enable_if<std::is_same<types<>, typename Types::tail>::value, void>::type
+{
+	typedef typename Types::type T;
+	auto ptr = reinterpret_cast<T*>(buf);
+	delegated_function_nofuture<types<>, std::nullptr_t, nullptr, Ps..., T>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
+}
+
+template<typename Types, typename Function, Function f, typename O, typename... Ps>
+auto delegated_function_nofuture(char* buf, O&& o, Ps&&... ps)
+-> typename
+	std::enable_if<
+		!std::is_same< types<>, Types>::value
+		&& std::is_member_function_pointer<Function>::value
+	, void>::type
+{
+	typedef typename Types::type T;
+	auto ptr = reinterpret_cast<T*>(buf);
+	delegated_function_nofuture<typename Types::tail, Function, f>(buf+sizeof(T), std::forward<O>(o), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
+}
 
 /**
  * @brief queue delegation base class
@@ -204,28 +276,142 @@ class qdlock_base {
 		DQueue delegation_queue;
 		
 		/** executes the operation */
-		template<typename R, typename... Ps>
-		void execute(std::promise<R> r, R (*f)(Ps...), Ps... ps) {
-			r.set_value(f(ps...));
+		template<typename Function, Function f, typename R, typename... Ps>
+		auto execute(std::promise<R> r, Ps&&... ps)
+		-> typename std::enable_if<!std::is_same<Function, std::nullptr_t>::value, void>::type
+		{
+			static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
+			r.set_value(f(std::move(ps)...));
 		}
 		/** alternative for operations which return void */
-		template<typename... Ps>
-		void execute(std::promise<void> r, void (*f)(Ps...), Ps... ps) {
-			f(ps...);
+		template<typename Function, Function f, typename... Ps>
+		auto execute(std::promise<void> r, Ps&&... ps)
+		-> typename std::enable_if<!std::is_same<Function, std::nullptr_t>::value, void>::type
+		{
+			f(std::move(ps)...);
 			r.set_value();
 		}
+		/** alternative for operations without a promise */
+		template<typename Function, Function f, typename... Ps>
+		auto execute(std::nullptr_t, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				!std::is_same<Function, std::nullptr_t>::value
+				&& std::is_function<typename std::remove_pointer<Function>::type>::value
+			, void>::type
+		{
+			f(std::move(ps)...);
+		}
+		/** alternative for operations without a promise */
+		template<typename Function, Function f, typename O, typename... Ps>
+		auto execute(std::nullptr_t, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				!std::is_same<Function, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+//				&& std::is_same< decltype(O::Function(ps...)), decltype(o.*f(ps...))>::value
+			, void>::type
+		{
+			(o.*f)(std::move(ps)...);
+		}
+		/** alternative for operations without a promise */
+		template<typename Ignored, Ignored i, typename Function, typename... Ps>
+		auto execute(std::nullptr_t, Function&& f, Ps&&... ps)
+		-> typename std::enable_if<std::is_same<Ignored, std::nullptr_t>::value, void>::type
+		{
+			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
+			f(std::move(ps)...);
+		}
+		/** alternative for operations without a promise */
+		template<typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
+		auto execute(std::nullptr_t, Function&& f, O&& o, Ps&&... ps)
+		-> typename
+			std::enable_if<
+				std::is_same<Ignored, std::nullptr_t>::value
+				&& std::is_member_function_pointer<Function>::value
+			, void>::type
+		{
+			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
+			(o.*f)(std::move(ps)...);
+		}
 		/** maybe enqueues the operation */
-		template<typename R, typename... Ps>
-		bool enqueue(std::promise<R> r, R (*f)(Ps...), Ps... ps) {
-			void (*d)(char*) = delegated_function<types<R (*)(Ps...), Ps...>>;
-			return delegation_queue.enqueue(d, std::move(r), f, ps...);
+		template<typename Function, Function f, typename R, typename... Ps>
+		bool enqueue(std::promise<R> r, Ps... ps) {
+			static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
+			void (*d)(char*) = delegated_function<types<Ps...>, Function, f>;
+			return delegation_queue.enqueue(d, std::move(ps)..., std::move(r));
 		}
 		/** alternative for operations which return void */
-		template<typename... Ps>
-		bool enqueue(std::promise<void> r, void (*f)(Ps...), Ps... ps) {
-			void (*d)(char*) = delegated_void_function<types<void (*)(Ps...), Ps...>>;
-			return delegation_queue.enqueue(d, std::move(r), f, ps...);
+		template<typename Function, Function f, typename... Ps>
+		bool enqueue(std::promise<void> r, Ps... ps) {
+			void (*d)(char*) = delegated_void_function<types<Ps...>, Function, f>;
+			return delegation_queue.enqueue(d, ps..., std::move(r));
 		}
+		/** alternative without returning a result */
+		template<typename Function, Function f, typename... Ps>
+		typename std::enable_if<!std::is_same<Function, std::nullptr_t>::value, bool>::type enqueue(std::nullptr_t, Ps... ps) {
+			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, Function, f>;
+			return delegation_queue.enqueue(d, ps...);
+		}
+		/** alternative without returning a result */
+		template<typename Ignored, std::nullptr_t i, typename... Ps>
+		bool enqueue(Ignored fi, Ps... ps) {
+			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, std::nullptr_t, nullptr>;
+			return delegation_queue.enqueue(d, ps...);
+		}
+		struct no_promise {
+			typedef std::nullptr_t promise;
+			typedef std::nullptr_t future;
+			static promise create_promise() {
+				return nullptr;
+			}
+			static future create_future(promise) {
+				return nullptr;
+			}
+		};
+
+		struct no_reader_sync {
+			static void wait_writers() {};
+			static void wait_readers() {};
+		};
+		template<typename R>
+		struct std_promise {
+			typedef std::promise<R> promise;
+			typedef std::future<R> future;
+			static promise create_promise() {
+				return promise();
+			}
+			static future create_future(promise p) {
+				return p.get_future();
+			}
+		};
+
+		//-> typename std::conditional<std::is_same<std::nullptr_t, typename Promise::promise>::value, void, typename Promise::future>::type
+		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
+		auto delegate(Ps&&... ps)
+		-> typename Promise::future
+		{
+			RSync::wait_writers(this);
+			while(true) {
+				auto result = Promise::create_promise();
+				auto future = Promise::create_future(result);
+				if(this->mutex_lock.try_lock()) {
+					this->delegation_queue.open();
+					RSync::wait_readers(this);
+					execute<Function, f, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+					this->delegation_queue.flush();
+					this->mutex_lock.unlock();
+					return future;
+				} else {
+					if(enqueue<Function, f>(std::move(result), ps...)) {
+						return future;
+					}
+				}
+				pause();
+			}
+		}
+
+
 };
 
 
@@ -261,7 +447,8 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 						return future;
 					}
 				}
-				std::this_thread::yield();
+				asm("pause");
+				//std::this_thread::yield();
 			}
 		}
 
@@ -283,10 +470,10 @@ class reader_groups {
 			return false;
 		}
 		void arrive() {
-			counters[0] += 1;
+			counters[thread_id % GROUPS] += 1;
 		}
 		void depart() {
-			counters[0] -= 1;
+			counters[thread_id % GROUPS] -= 1;
 		}
 };
 
@@ -294,6 +481,20 @@ template<class MLock, class DQueue, class RIndicator, int READ_PATIENCE_LIMIT>
 class mrqdlock_impl : private qdlock_base<MLock, DQueue> {
 	std::atomic<int> writeBarrier;
 	RIndicator reader_indicator;
+	typedef qdlock_base<MLock, DQueue> base;
+	typedef mrqdlock_impl<MLock, DQueue, RIndicator, READ_PATIENCE_LIMIT>* this_t;
+	struct reader_indicator_sync {
+		static void wait_writers(base* t) {
+			while(static_cast<this_t>(t)->writeBarrier.load() > 0) {
+				pause();
+			}
+		}
+		static void wait_readers(base* t) {
+			while(static_cast<this_t>(t)->reader_indicator.query()) {
+				pause();
+			}
+		}
+	};
 	public:
 		/**
 		 * @brief delegate function
@@ -303,10 +504,12 @@ class mrqdlock_impl : private qdlock_base<MLock, DQueue> {
 		 * @param ps the parameters for the delegated operation
 		 * @return a future for return value of delegated operation
 		 */
-		template<typename R, typename... Ps>
-		std::future<R> delegate(R (*f)(Ps...), Ps... ps) {
+		template<typename Function, Function f, typename... Ps>
+		auto delegate(Ps&&... ps) -> std::future<decltype(f(ps...))> {
+			typedef decltype(f(ps...)) R;
 			while(writeBarrier.load() > 0) {
-				std::this_thread::yield();
+				asm("pause");
+//				std::this_thread::yield();
 			}
 			while(true) {
 				std::promise<R> result;
@@ -314,29 +517,99 @@ class mrqdlock_impl : private qdlock_base<MLock, DQueue> {
 				if(this->mutex_lock.try_lock()) {
 					this->delegation_queue.open();
 					while(reader_indicator.query()) {
-						std::this_thread::yield();
+						asm("pause");
+//						std::this_thread::yield();
 					}
-					this->execute(std::move(result), f, ps...);
+					this->template execute<Function, f>(std::move(result), std::forward<Ps>(ps)...);
 					this->delegation_queue.flush();
 					this->mutex_lock.unlock();
 					return future;
 				} else {
-					if(this->enqueue(std::move(result), f, ps...)) {
+					/* cannot move here, as enqueue may fail */
+					if(this->template enqueue<Function, f>(std::move(result), ps...)) {
 						return future;
 					}
 				}
-				std::this_thread::yield();
+				asm("pause");
+//				std::this_thread::yield();
 			}
 		}
-
+		template<typename Function, Function f, typename... Ps>
+		void delegate_nofuture(Ps&&... ps) {
+			/* template provides function address */
+			base::template delegate<Function, f, typename base::no_promise, reader_indicator_sync, Ps...>(std::forward<Ps>(ps)...);
+		}
+		template<typename Function, typename... Ps>
+		void delegate_nofuture(Function&& f, Ps&&... ps) {
+			/* type of functor/function ptr stored in f, set template function pointer to NULL */
+			base::template delegate<std::nullptr_t, nullptr, typename base::no_promise, reader_indicator_sync, Function, Ps...>(std::forward<Function>(f), std::forward<Ps>(ps)...);
+		}
+#if 0
+		template<typename Function, Function f, typename... Ps>
+		void delegate_nofuture(Ps&&... ps) {
+			while(writeBarrier.load() > 0) {
+				asm("pause");
+//				std::this_thread::yield();
+			}
+			while(true) {
+				if(this->mutex_lock.try_lock()) {
+					this->delegation_queue.open();
+					while(reader_indicator.query()) {
+						asm("pause");
+//						std::this_thread::yield();
+					}
+					this->template execute<Function, f>(nullptr, std::forward<Ps>(ps)...);
+					this->delegation_queue.flush();
+					this->mutex_lock.unlock();
+					return;
+				} else {
+					/* cannot move here, as enqueue may fail */
+					if(this->template enqueue<Function, f>(nullptr, ps...)) {
+						return;
+					}
+				}
+				asm("pause");
+//				std::this_thread::yield();
+			}
+		}
+		template<typename Function, typename... Ps>
+		void delegate_nofuture(Function&& f, Ps&&... ps) {
+			while(writeBarrier.load() > 0) {
+				asm("pause");
+//				std::this_thread::yield();
+			}
+			while(true) {
+				if(this->mutex_lock.try_lock()) {
+					this->delegation_queue.open();
+					while(reader_indicator.query()) {
+						asm("pause");
+//						std::this_thread::yield();
+					}
+					this->template execute(nullptr, std::forward<Function>(f), std::forward<Ps>(ps)...);
+					this->delegation_queue.flush();
+					this->mutex_lock.unlock();
+					return;
+				} else {
+					/* cannot move here, as enqueue may fail */
+					if(this->template enqueue(nullptr, f, ps...)) {
+						return;
+					}
+				}
+				asm("pause");
+//				std::this_thread::yield();
+			}
+		}
+#endif
 		void lock() {
 			while(writeBarrier.load() > 0) {
-				std::this_thread::yield();
+				asm("pause");
+//				std::this_thread::yield();
 			}
 			this->mutex_lock.lock();
 			this->delegation_queue.open();
 			while(reader_indicator.query()) {
-				std::this_thread::yield();
+				asm("pause");
+//				std::this_thread::yield();
 			}
 		}
 		void unlock() {
@@ -352,7 +625,8 @@ start:
 			if(this->mutex_lock.is_locked()) {
 				reader_indicator.depart();
 				while(this->mutex_lock.is_locked()) {
-					std::this_thread::yield();
+					asm("pause");
+//					std::this_thread::yield();
 					if((readPatience == READ_PATIENCE_LIMIT) && !bRaised) {
 						writeBarrier.fetch_add(1);
 						bRaised = true;
@@ -368,8 +642,15 @@ start:
 		}
 
 };
+static void pause() {
+	asm("pause");
+//	std::this_thread::yield();
+}
 
 using qdlock = qdlock_impl<tatas_lock, buffer_queue<16384>>;
 using mrqdlock = mrqdlock_impl<tatas_lock, buffer_queue<16384>, reader_groups<64>, 65536>;
+
+#define DELEGATE_FUTURE(function, ...) template delegate<decltype(function), function>(__VA_ARGS__)
+#define DELEGATE_NOFUTURE(function, ...) template delegate_nofuture<decltype(function), function>(__VA_ARGS__)
 
 #endif
