@@ -36,7 +36,7 @@ void bar(myInt i) {
 void wait() {
 }
 
-mrqdlock qdl;
+qdlock qdl;
 
 void f1() {
 	typedef std::future<int> future;
@@ -55,11 +55,12 @@ void f2() {
 	Fun f;
 	for(auto& m : ms) {
 		qdl.DELEGATE_NOFUTURE(&myInt::inc, myInt(m.first), myInt(23));
+		qdl.delegate_n(&myInt::inc, myInt(m.first), myInt(23));
 		//qdl.delegate_nofuture(&foo, m.first);
 		//qdl.DELEGATE_NOFUTURE(&foo, m.first);
 	}
 	for(auto& m : ms) {
-		qdl.delegate_nofuture(f, myInt(m.first), myInt(23));
+		qdl.delegate_n(f, myInt(m.first), myInt(23));
 	}
 	auto bar = qdl.DELEGATE_FUTURE(wait);
 	bar.wait();
