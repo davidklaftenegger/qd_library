@@ -984,7 +984,7 @@ static void pause() {
 using qdlock = qdlock_impl<tatas_lock, buffer_queue<16384>>;
 using mrqdlock = mrqdlock_impl<tatas_lock, buffer_queue<16384>, reader_groups<64>, 65536>;
 
-#define DELEGATE_FUTURE(function, ...) template delegate_f<decltype(function), function>(__VA_ARGS__)
-#define DELEGATE_NOFUTURE(function, ...) template delegate_n<decltype(function), function>(__VA_ARGS__)
+#define DELEGATE_F(function, ...) template delegate_f<decltype(function), function>(__VA_ARGS__)
+#define DELEGATE_N(function, ...) template delegate_n<decltype(function), function>(__VA_ARGS__)
 
 #endif
