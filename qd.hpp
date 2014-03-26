@@ -122,14 +122,14 @@ template<long ARRAY_SIZE>
 class buffer_queue {
 	/** type for the size field for queue entries, loads must not be optimized away in flush */
 	typedef std::atomic<long> sizetype;
+
+	static constexpr long aligned(long size) {
+		return ((size + sizeof(sizetype) - 1) / sizeof(sizetype)) * sizeof(sizetype); /* TODO: better way of computing a ceil? */
+	}
 	
 	/** type for function pointers to be stored in this queue */
 //	typedef std::function<void(char*)> ftype;
 	typedef void(*ftype)(char*);
-
-	/* some constants */
-	static const bool CLOSED = false;
-	static const bool SUCCESS = true;
 
 	/** counter for how much of the buffer is currently in use; offset to free area in buffer_array */
 	std::atomic<long> counter;
@@ -139,6 +139,10 @@ class buffer_queue {
 	std::array<char, ARRAY_SIZE> buffer_array;
 
 	public:
+		/* some constants */
+		static const bool CLOSED = false;
+		static const bool SUCCESS = true;
+
 		buffer_queue() : counter(ARRAY_SIZE), closed(true) {}
 		/** opens the queue */
 		void open() {
@@ -166,7 +170,7 @@ class buffer_queue {
 			}
 			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
 			std::initializer_list<std::size_t> sizeList = {sizeof(Ps)...};
-			const long size = sizeof(sizetype) + sizeof(op) + std::accumulate(sizeList.begin(), sizeList.end(), 0); // TODO pad to next sizeof(sizetype)?
+			const long size = aligned(sizeof(sizetype) + sizeof(op) + std::accumulate(sizeList.begin(), sizeList.end(), 0));
 			/* get memory in buffer */
 			long index = counter.fetch_add(size, std::memory_order_relaxed);
 			if(index+size <= ARRAY_SIZE) {
@@ -196,13 +200,13 @@ class buffer_queue {
 					open = false;
 					closed.store(true, std::memory_order_relaxed);
 				}
-				if(todo >= static_cast<long>(ARRAY_SIZE - sizeof(ftype) - sizeof(sizetype))) { /* queue closed */
-					todo = ARRAY_SIZE - sizeof(ftype) - sizeof(sizetype);
+				if(todo >= static_cast<long>(ARRAY_SIZE)) { /* queue closed */
+					todo = ARRAY_SIZE;
 					open = false;
 					closed.store(true, std::memory_order_relaxed);
 				}
 				long last_size = 0;
-				for(long index = done; index < todo; index+=last_size) {
+				for(long index = done; index < todo; index+=aligned(last_size)) {
 					/* synchronization on entry size field: 0 until entry available */
 					do {
 						last_size = reinterpret_cast<sizetype*>(&buffer_array[index])->load(std::memory_order_acquire);
@@ -900,7 +904,7 @@ class qdlock_base {
 					this->mutex_lock.unlock();
 					return;
 				} else {
-					if(enqueue<Function, f>(&result, (&ps)...)) {
+					if(enqueue<Function, f>(&result, (&ps)...) == DQueue::SUCCESS) {
 						return;
 					}
 				}
