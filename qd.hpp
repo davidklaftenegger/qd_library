@@ -251,15 +251,6 @@ class simple_locked_queue {
 		new (ptr) P(std::forward<P>(p));
 		forwardall(buffer, offset+sizeof(p), std::forward<Ts>(ts)...);
 	}
-	template<typename P, typename... Ts>
-	void forwardall_dbg(char* buffer, long offset, P&& p, Ts&&... ts) {
-		assert(offset <= 120);
-		std::cout << "XX: " << reinterpret_cast<void*>(p) << std::endl;
-		auto ptr = reinterpret_cast<P*>(&buffer[offset]);
-		new (ptr) P(std::forward<P>(p));
-		std::cout << "YY: " << reinterpret_cast<void*>(*ptr) << std::endl;
-		forwardall(buffer, offset+sizeof(p), std::forward<Ts>(ts)...);
-	}
 	public:
 		void open() {
 			/* no-op as this is an "infinite" queue that always accepts more data */
@@ -1307,7 +1298,6 @@ class qd_condition_variable_impl : private qdlock_base<MLock, DQueue> {
 		}
 		template<typename Lock, typename Function, Function f, typename Promise, typename... Ps>
 		static void redelegate(Lock* l, Promise&& p, Ps&&... ps) {
-			std::cout << "never ever" << std::endl;
 			using no_promise = typename base::no_promise::promise;
 			l->template delegate<Function, f, no_promise, typename Lock::reader_indicator_t, Promise, Ps...>(nullptr, std::forward<Promise>(p), std::forward<Ps>(ps)...);
 	}
