@@ -13,8 +13,8 @@
 
 #include<pthread.h>
 
-#include "padded.hpp"
 #include "threadid.hpp"
+#include "waiting_future.hpp"
 
 /* TODO */
 static void pause();
@@ -885,7 +885,7 @@ class qdlock_base {
 		template<typename R>
 		struct std_promise {
 			typedef std::promise<R> promise;
-			typedef std::future<R> future;
+			typedef waiting_future<R> future;
 			static promise create_promise() {
 				return promise();
 			}
