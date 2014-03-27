@@ -114,6 +114,18 @@ class mutex_lock {
 		}
 };
 
+
+template<typename... Ps>
+struct sumsizes;
+template<typename T, typename... Ps>
+struct sumsizes<T, Ps...> {
+	static constexpr long size = sizeof(T) + sumsizes<Ps...>::size;
+};
+template<>
+struct sumsizes<> {
+	static constexpr long size = 0;
+};
+
 /**
  * @brief a buffer-based tantrum queue
  * @tparam ARRAY_SIZE the buffer's size in bytes
@@ -169,8 +181,7 @@ class buffer_queue {
 				return CLOSED;
 			}
 			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
-			std::initializer_list<std::size_t> sizeList = {sizeof(Ps)...};
-			const long size = aligned(sizeof(sizetype) + sizeof(op) + std::accumulate(sizeList.begin(), sizeList.end(), 0));
+			constexpr long size = aligned(sizeof(sizetype) + sizeof(op) + sumsizes<Ps...>::size);
 			/* get memory in buffer */
 			long index = counter.fetch_add(size, std::memory_order_relaxed);
 			if(index+size <= ARRAY_SIZE) {
