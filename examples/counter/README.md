@@ -32,14 +32,14 @@ Results
 
 ### Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz ###
 4 cores with 2 threads each
-
-|            |   total number of threads   |
-|            | --------------------------- |
-|            |    5    |   50    |   500   |
-|            | ------- | ------- | ------- |
-| pthreads   | 17229ms | 21879ms | 18162ms |
-| std::mutex | 16644ms | 24020ms | 21734ms |
-| QD locking |  3422ms |  4037ms |  4878ms |
+```
+            |   total number of threads   |
+            |    5    |   50    |   500   |
+            | ------- | ------- | ------- |
+ pthreads   | 17229ms | 21879ms | 18162ms |
+ std::mutex | 16644ms | 24020ms | 21734ms |
+ QD locking |  3422ms |  4037ms |  4878ms |
+```
 
 Files
 -----
