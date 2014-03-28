@@ -3,6 +3,7 @@
 
 static int shared_counter;
 static std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
+
 void cs_init() {
 	shared_counter = 0;
 	start_time = std::chrono::high_resolution_clock::now();

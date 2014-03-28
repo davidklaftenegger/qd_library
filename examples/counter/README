@@ -3,12 +3,14 @@ launches N threads, which each execute a critical section X times,
 such that the total number of critical section executions equals:
 X/N = 100,000,000
 
-make all
+make
 builds a version for 5, 50 and 500 threads for each of the locking schemes:
 a) pthreads uses pthreads directly: counter_pthreads{5,50,500}
 b) std uses std::mutex and std::lock_guard for locking: counter_std{5,50,500}
 c) qd uses QD locking as provided by this library: counter_qd{5,50,500}
 
+You can use the following command to view output including runtimes:
+for counter in *5 *50 *500; do ./$counter; echo; done
 
 The critical section is implemented in cs.cpp.
 
