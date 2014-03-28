@@ -50,7 +50,7 @@ class pthreads_lock {
 		pthreads_lock() : locked(false), mutex(PTHREAD_MUTEX_INITIALIZER) {};
 		pthreads_lock(pthreads_lock&) = delete; /* TODO? */
 		bool try_lock() {
-			if(!pthread_mutex_trylock(&mutex)) {
+			if(!is_locked() && !pthread_mutex_trylock(&mutex)) {
 				locked.store(true, std::memory_order_release);
 				return true;
 			} else {
@@ -86,7 +86,7 @@ class mutex_lock {
 		mutex_lock() : locked(false), mutex() {};
 		mutex_lock(mutex_lock&) = delete; /* TODO? */
 		bool try_lock() {
-			if(mutex.try_lock()) {
+			if(!is_locked() && mutex.try_lock()) {
 				locked.store(true, std::memory_order_release);
 				return true;
 			} else {
@@ -152,8 +152,8 @@ class buffer_queue {
 
 	public:
 		/* some constants */
-		static const bool CLOSED = false;
-		static const bool SUCCESS = true;
+		static constexpr bool CLOSED = false;
+		static constexpr bool SUCCESS = true;
 
 		buffer_queue() : counter(ARRAY_SIZE), closed(true) {}
 		/** opens the queue */
