@@ -18,3 +18,7 @@ counter_pthreads.cpp - pthreads-only implementation
 counter_std.cpp - std::mutex based implementation
 counter_qd.cpp - using the qd locks provided by this library
 
+make atomics
+additionally builds versions using atomic instructions instead of locks.
+The atomic critical section is implemented in cs_atomic.cpp.
+
