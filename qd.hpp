@@ -599,6 +599,7 @@ auto delegated_function_nofuture(char* buf, Ps&&... ps)
  */
 template<class MLock, class DQueue>
 class qdlock_base {
+	std::condition_variable_any cond;
 	protected:
 		MLock mutex_lock;
 		DQueue delegation_queue;
@@ -900,6 +901,11 @@ class qdlock_base {
 			}
 		};
 
+		struct null_lock {
+			void lock() {}
+			void unlock() {}
+		};
+		null_lock n;
 		//-> typename std::conditional<std::is_same<std::nullptr_t, typename Promise::promise>::value, void, typename Promise::future>::type
 		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
 		auto delegate(Promise&& result, Ps&&... ps)
@@ -907,19 +913,23 @@ class qdlock_base {
 		{
 			RSync::wait_writers(this);
 			while(true) {
-				if(this->mutex_lock.try_lock()) {
-					this->delegation_queue.open();
-					RSync::wait_readers(this);
-					execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
-					this->delegation_queue.flush();
-					this->mutex_lock.unlock();
-					return;
-				} else {
-					if(enqueue<Function, f>(&result, (&ps)...) == DQueue::SUCCESS) {
+				for(int cnt = 0; cnt < 32; cnt++) {
+					if(this->mutex_lock.try_lock()) {
+						this->delegation_queue.open();
+						RSync::wait_readers(this);
+						execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+						this->delegation_queue.flush();
+						this->mutex_lock.unlock();
+						cond.notify_all();
 						return;
+					} else {
+						if(enqueue<Function, f>(&result, (&ps)...) == DQueue::SUCCESS) {
+							return;
+						}
 					}
+					pause();
 				}
-				pause();
+				cond.wait(n);
 			}
 		}
 };
@@ -1326,8 +1336,8 @@ static void pause() {
 //	std::this_thread::yield();
 }
 
-using qdlock = qdlock_impl<mutex_lock, buffer_queue<16384>>;
-using mrqdlock = mrqdlock_impl<mutex_lock, buffer_queue<16384>, reader_groups<64>, 65536>;
+using qdlock = qdlock_impl<tatas_lock, buffer_queue<65536>>;
+using mrqdlock = mrqdlock_impl<tatas_lock, buffer_queue<16384>, reader_groups<64>, 65536>;
 using qd_condition_variable = qd_condition_variable_impl<mutex_lock, simple_locked_queue>;
 
 #define DELEGATE_F(function, ...) template delegate_f<decltype(function), function>(__VA_ARGS__)
