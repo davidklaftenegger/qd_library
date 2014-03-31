@@ -41,15 +41,15 @@ However, the numbers below show how much time is spent on synchronization in
 different implementations.
 
 ### Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz ###
-4 cores with 2 threads each
+4 cores with 2 threads each (times in ms)
 ```
-            |   total number of threads   |
-            |    5    |   50    |   500   |
-            | ------- | ------- | ------- |
- pthreads   | 17229ms | 21879ms | 18162ms |
- std::mutex | 16644ms | 24020ms | 21734ms |
- QD locking |  3422ms |  4037ms |  4878ms |
- atomic cs  |  1689ms |  1830ms |  1833ms | 
+            |total number of threads|
+            |   5   |  50   |  500  |
+            | ----- | ----- | ----- |
+ pthreads   | 17229 | 21879 | 18162 |
+ std::mutex | 16644 | 24020 | 21734 |
+ QD locking |  3422 |  4037 |  4878 |
+ atomic cs  |  1689 |  1830 |  1833 | 
 ```
 
 Files
