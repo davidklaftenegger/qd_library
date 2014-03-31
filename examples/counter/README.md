@@ -59,4 +59,6 @@ Files
 * `counter_qd.cpp` - using the qd locks provided by this library
 * `cs.hpp` - interface definition for the critical section
 * `cs.cpp` - the critical section implementation (not thread-safe)
+
+* `counter_pthreads.cpp` - atomic instruction implementation
 * `cs_atomic.cpp` - thread-safe variant of cs.cpp using atomic instructions
