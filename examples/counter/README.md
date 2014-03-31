@@ -9,15 +9,20 @@ X/N - 100,000,000
 
 Building
 --------
-make
+`make`
 builds a version for 5, 50 and 500 threads for each of the locking schemes:
- a) pthreads uses pthreads directly: `counter_pthreads{5,50,500}`
- b) std uses `std::mutex` and `std::lock_guard` for locking: `counter_std{5,50,500}`
- c) qd uses QD locking as provided by this library: `counter_qd{5,50,500}`
+ * `pthreads` uses pthreads directly: `counter_pthreads{5,50,500}`
+ * `std` uses `std::mutex` and `std::lock_guard` for locking: `counter_std{5,50,500}`
+ * `qd` uses QD locking as provided by this library: `counter_qd{5,50,500}`
 
 Comparison with atomic instructions
 -----------------------------------
-make atomics
+For comparison, this example includes code that implements the critical section
+using atomic instructions. While this is not executing the same code that the
+other locking methods use, it shows the "optimal" implementation for this
+particular example program, using an already thread-safe "critical" section.
+
+`make atomics`
 additionally builds versions using atomic instructions instead of locks.
 
 Running
