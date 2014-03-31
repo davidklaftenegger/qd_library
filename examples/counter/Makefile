@@ -55,4 +55,5 @@ clean:
 	-@rm counter_pthreads5 counter_pthreads50 counter_pthreads500 \
 		counter_std5 counter_std50 counter_std500 \
 		counter_qd5 counter_qd50 counter_qd500 \
+		counter_atomic5 counter_atomic50 counter_atomic500 \
 		*.o 2>/dev/null || true
