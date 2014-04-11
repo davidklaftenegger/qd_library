@@ -12,7 +12,7 @@ class tatas_lock {
 		tatas_lock() : locked(false) {};
 		tatas_lock(tatas_lock&) = delete; /* TODO? */
 		bool try_lock() {
-			if(locked.load(std::memory_order_acquire)) return false;
+			if(is_locked()) return false;
 			return !locked.exchange(true, std::memory_order_release);
 		}
 		void unlock() {
