@@ -279,7 +279,6 @@ auto delegated_function_nofuture(char* buf, Ps&&... ps)
 }
 
 
-
 /**
  * @brief queue delegation base class
  * @tparam MLock mutual exclusion lock
@@ -287,7 +286,6 @@ auto delegated_function_nofuture(char* buf, Ps&&... ps)
  */
 template<class MLock, class DQueue>
 class qdlock_base {
-	std::condition_variable_any cond;
 	protected:
 		MLock mutex_lock;
 		DQueue delegation_queue;
@@ -589,11 +587,6 @@ class qdlock_base {
 			}
 		};
 
-		struct null_lock {
-			void lock() {}
-			void unlock() {}
-		};
-		null_lock n;
 		//-> typename std::conditional<std::is_same<std::nullptr_t, typename Promise::promise>::value, void, typename Promise::future>::type
 		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
 		auto delegate(Promise&& result, Ps&&... ps)
@@ -608,7 +601,7 @@ class qdlock_base {
 						execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 						this->delegation_queue.flush();
 						this->mutex_lock.unlock();
-						cond.notify_all();
+						mutex_lock.notify_all();
 						return;
 					} else {
 						if(enqueue<Function, f>(&result, (&ps)...) == DQueue::SUCCESS) {
@@ -617,7 +610,7 @@ class qdlock_base {
 					}
 					pause();
 				}
-				cond.wait(n);
+				mutex_lock.wait();
 			}
 		}
 };
