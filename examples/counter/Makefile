@@ -3,57 +3,60 @@ CXX=clang++
 CXXFLAGS=-O2 -std=c++11 -I../../
 LDFLAGS=-O2 -std=c++11 -pthreads
 
-qd_comparison: counter_pthreads5 counter_std5 counter_qd5 counter_pthreads50 counter_std50 counter_qd50 counter_pthreads500 counter_std500 counter_qd500
+.PHONY: qd_comparison atomic qd_only all clean
 
-atomic: counter_atomic5 counter_atomic50 counter_atomic500
+COMPNUMS = 5 50 500
+#COMPNUMS = 1 2 4 8 16 32 64 128
 
-all: qd_comparison atomic
+ONLYNUMS = 1 2 3 4 5 6 7 8 9
+
+qd_comparison: $(addprefix counter_qd,${COMPNUMS}) $(addprefix counter_pthreads,${COMPNUMS}) $(addprefix counter_std,${COMPNUMS})
+
+atomic: $(addprefix counter_atomic,${COMPNUMS})
+
+qd_only: $(addprefix counter_qd,${ONLYNUMS})
+
+all: qd_comparison atomic qd_only
+
+NUMS = $(shell seq 1 500)
+QD_OBJ       := $(addsuffix .o,$(addprefix counter_qd_,${NUMS}))
+PTHREADS_OBJ := $(addsuffix .o,$(addprefix counter_pthreads_,${NUMS}))
+STD_OBJ      := $(addsuffix .o,$(addprefix counter_std_,${NUMS}))
+ATOMIC_OBJ   := $(addsuffix .o,$(addprefix counter_atomic_,${NUMS}))
 
 
-%_5.o: %.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=5
+.PRECIOUS: counter_qd_%.o
+$(QD_OBJ) : counter_qd_%.o : counter_qd.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=$*
 
-%_50.o: %.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=50
+.PRECIOUS: counter_pthreads_%.o
+$(PTHREADS_OBJ) : counter_pthreads_%.o : counter_pthreads.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=$*
 
-%_500.o: %.cpp
-	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=500
+.PRECIOUS: counter_std_%.o
+$(STD_OBJ) : counter_std_%.o : counter_std.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=$*
 
-%.o: %.cpp
+.PRECIOUS: counter_atomic_%.o
+$(ATOMIC_OBJ) : counter_atomic_%.o : counter_atomic.cpp
+	$(CXX) -c -o $@ $< $(CXXFLAGS) -DTHREADS=$*
+
+cs.o cs_atomic.o: %.o : %.cpp
 	$(CXX) -c -o $@ $< $(CXXFLAGS)
 
-counter_pthreads5: counter_pthreads_5.o cs.o
+counter_qd%: counter_qd_%.o cs.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_std5: counter_std_5.o cs.o
+counter_pthreads%: counter_pthreads_%.o cs.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_qd5: counter_qd_5.o cs.o
+counter_std%: counter_std_%.o cs.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
-
-counter_pthreads50: counter_pthreads_50.o cs.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_std50: counter_std_50.o cs.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_qd50: counter_qd_50.o cs.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-
-counter_pthreads500: counter_pthreads_500.o cs.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_std500: counter_std_500.o cs.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_qd500: counter_qd_500.o cs.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-
-counter_atomic5: counter_atomic_5.o cs_atomic.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_atomic50: counter_atomic_50.o cs_atomic.o
-	$(CXX) -o $@ $^ $(LDFLAGS)
-counter_atomic500: counter_atomic_500.o cs_atomic.o
+counter_atomic%: counter_atomic_%.o cs_atomic.o
 	$(CXX) -o $@ $^ $(LDFLAGS)
 
 
 clean:
-	-@rm counter_pthreads5 counter_pthreads50 counter_pthreads500 \
-		counter_std5 counter_std50 counter_std500 \
-		counter_qd5 counter_qd50 counter_qd500 \
-		counter_atomic5 counter_atomic50 counter_atomic500 \
+	-@rm counter_pthreads[0-9]* \
+		counter_std[0-9]* \
+		counter_qd[0-9]* \
+		counter_atomic[0-9]* \
 		*.o 2>/dev/null || true
