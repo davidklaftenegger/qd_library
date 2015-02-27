@@ -23,7 +23,7 @@ class tatas_lock {
 		}
 		void lock() {
 			while(!try_lock()) {
-				pause();
+				qd::pause();
 			}
 		}
 };

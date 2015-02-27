@@ -16,12 +16,12 @@ class mrqdlock_impl : private qdlock_base<MLock, DQueue> {
 	struct reader_indicator_sync {
 		static void wait_writers(base* t) {
 			while(static_cast<this_t>(t)->writeBarrier.load() > 0) {
-				pause();
+				qd::pause();
 			}
 		}
 		static void wait_readers(base* t) {
 			while(static_cast<this_t>(t)->reader_indicator.query()) {
-				pause();
+				qd::pause();
 			}
 		}
 	};
@@ -138,12 +138,12 @@ class mrqdlock_impl : private qdlock_base<MLock, DQueue> {
 
 		void lock() {
 			while(writeBarrier.load() > 0) {
-				pause();
+				qd::pause();
 			}
 			this->mutex_lock.lock();
 			this->delegation_queue.open();
 			while(reader_indicator.query()) {
-				pause();
+				qd::pause();
 			}
 		}
 		void unlock() {
@@ -159,7 +159,7 @@ start:
 			if(this->mutex_lock.is_locked()) {
 				reader_indicator.depart();
 				while(this->mutex_lock.is_locked()) {
-					pause();
+					qd::pause();
 					if((readPatience == READ_PATIENCE_LIMIT) && !bRaised) {
 						writeBarrier.fetch_add(1);
 						bRaised = true;

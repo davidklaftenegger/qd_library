@@ -53,10 +53,10 @@ class qd_condition_variable_impl : private qdlock_base<MLock, DQueue> {
 			while(true) {
 				/* TODO enqueue a function that re-delegates the provided function with its parameter to Lock l TODO */
 				std::nullptr_t no_promise;
-				if(this->template enqueue<void (*)(Lock*, typename Promise::promise&&, Ps&&...), &redelegate<Lock, Function, f, Promise&&, Ps&&...>>(&no_promise, &l, &result, (&ps)...)) {
+				if(this->template enqueue<void (*)(Lock*, typename Promise::promise&&, Ps&&...), redelegate<Lock, Function, f, Promise&&, Ps&&...>>(&no_promise, &l, &result, (&ps)...)) {
 					return;
 				}
-				pause();
+				qd::pause();
 			}
 		}
 		template<typename Lock, typename Function, Function f, typename Promise, typename... Ps>

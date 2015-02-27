@@ -5,6 +5,7 @@
 #include<array>
 #include<atomic>
 #include "util/type_tools.hpp"
+#include "padded.hpp"
 
 /**
  * @brief a buffer-based tantrum queue
@@ -15,30 +16,19 @@ class buffer_queue {
 	/** type for the size field for queue entries, loads must not be optimized away in flush */
 	typedef std::atomic<long> sizetype;
 
-	static constexpr long aligned(long size) {
-		return ((size + sizeof(sizetype) - 1) / sizeof(sizetype)) * sizeof(sizetype); /* TODO: better way of computing a ceil? */
-	}
-
 	/** type for function pointers to be stored in this queue */
 //	typedef std::function<void(char*)> ftype;
 	typedef void(*ftype)(char*);
 
-	/** counter for how much of the buffer is currently in use; offset to free area in buffer_array */
-	std::atomic<long> counter;
-	/** optimization flag: no writes when queue in known-closed state */
-	std::atomic<status> closed; /*TODO atomic_flag? */
-	/** the buffer for entries to this queue */
-	std::array<char, ARRAY_SIZE> buffer_array;
-
 	public:
 		/** constants for current state of the queue */
-		enum status { OPEN=0, SUCCESS=0, FULL, CLOSED }; 
+		enum class status : long { OPEN=0, SUCCESS=0, FULL, CLOSED }; 
 
-		buffer_queue() : counter(ARRAY_SIZE), closed(FULL) {}
+		buffer_queue() : counter(ARRAY_SIZE), closed(status::CLOSED) {}
 		/** opens the queue */
 		void open() {
 			counter.store(0, std::memory_order_relaxed);
-			closed.store(OPEN, std::memory_order_relaxed);
+			closed.store(status::OPEN, std::memory_order_relaxed);
 		}
 
 		void forwardall(long) {};
@@ -57,7 +47,7 @@ class buffer_queue {
 		template<typename... Ps>
 		status enqueue(void (*op)(char*), Ps*... ps) {
 			auto current_status = closed.load(std::memory_order_relaxed);
-			if(current_status != OPEN) {
+			if(current_status != status::OPEN) {
 				return current_status;
 			}
 			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
@@ -69,14 +59,14 @@ class buffer_queue {
 				forwardall(index+sizeof(sizetype), std::move(op), std::move(*ps)...);
 
 				reinterpret_cast<sizetype*>(&buffer_array[index])->store(size, std::memory_order_release);
-				return SUCCESS;
+				return status::SUCCESS;
 			} else {
 				/* not enough memory available: avoid deadlock in flush by setting special value */
 				if(index < static_cast<long>(ARRAY_SIZE - sizeof(sizetype))) {
 					reinterpret_cast<sizetype*>(&buffer_array[index])->store(ARRAY_SIZE+1, std::memory_order_release); // TODO MEMORDER
 				}
-					closed.store(FULL, std::memory_order_relaxed);
-				return FULL;
+					closed.store(status::FULL, std::memory_order_relaxed);
+				return status::FULL;
 			}
 		}
 
@@ -90,12 +80,12 @@ class buffer_queue {
 				if(todo == done) { /* close queue */
 					todo = counter.exchange(ARRAY_SIZE, std::memory_order_relaxed);
 					open = false;
-					closed.store(CLOSED, std::memory_order_relaxed);
+					closed.store(status::CLOSED, std::memory_order_relaxed);
 				}
 				if(todo >= static_cast<long>(ARRAY_SIZE)) { /* queue closed */
 					todo = ARRAY_SIZE;
 					open = false;
-					closed.store(CLOSED, std::memory_order_relaxed);
+					closed.store(status::CLOSED, std::memory_order_relaxed);
 				}
 				long last_size = 0;
 				for(long index = done; index < todo; index+=aligned(last_size)) {
@@ -121,6 +111,19 @@ class buffer_queue {
 					std::fill(&buffer_array[index], &buffer_array[index+last_size], 0);
 				}
 			}
+		}
+	private:
+		/** counter for how much of the buffer is currently in use; offset to free area in buffer_array */
+		std::atomic<long> counter;
+
+		/** the buffer for entries to this queue */
+		std::array<char, ARRAY_SIZE> buffer_array;
+		
+		/** optimization flag: no writes when queue in known-closed state */
+		std::atomic<status> closed;
+
+		static constexpr long aligned(long size) {
+			return ((size + sizeof(sizetype) - 1) / sizeof(sizetype)) * sizeof(sizetype); /* TODO: better way of computing a ceil? */
 		}
 };
 

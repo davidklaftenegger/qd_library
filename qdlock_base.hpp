@@ -482,7 +482,7 @@ class qdlock_base {
 		/** alternative with returning a result, case function specified as argument */
 		/* case Ba */
 		template<typename Ignored, std::nullptr_t i, typename R, typename Function, typename... Ps>
-		auto enqueue(std::promise<R>* r, Function* f, Ps*... ps)
+		auto enqueue2(std::promise<R>* r, Function* f, Ps*... ps)
 		-> typename
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
@@ -505,7 +505,7 @@ class qdlock_base {
 		/** alternative with returning a void, case function specified as argument */
 		/* case Bb */
 		template<typename Ignored, std::nullptr_t i, typename R, typename... Ps>
-		auto enqueue(std::promise<void>* r, Ps*... ps)
+		auto enqueue2(std::promise<void>* r, Ps*... ps)
 		-> typename
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
@@ -530,7 +530,7 @@ class qdlock_base {
 		/** alternative without returning a result, case function specified as argument */
 		/* case Bc */
 		template<typename Ignored, std::nullptr_t i, typename... Ps>
-		auto enqueue(std::nullptr_t*, Ps*... ps)
+		auto enqueue2(std::nullptr_t*, Ps*... ps)
 		-> typename DQueue::status
 		{
 			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, std::nullptr_t, nullptr>;
@@ -586,6 +586,16 @@ class qdlock_base {
 				return p.get_future();
 			}
 		};
+		
+		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
+		auto helper(Promise&& result, Ps&&... ps)
+		-> void {
+			this->delegation_queue.open();
+			RSync::wait_readers(this);
+			execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+			this->delegation_queue.flush();
+			this->mutex_lock.unlock();
+		}
 
 		//-> typename std::conditional<std::is_same<std::nullptr_t, typename Promise::promise>::value, void, typename Promise::future>::type
 		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
@@ -593,25 +603,34 @@ class qdlock_base {
 		-> void
 		{
 			RSync::wait_writers(this);
-			while(true) {
-				for(int cnt = 0; cnt < 32; cnt++) {
-					if(this->mutex_lock.try_lock()) {
-						this->delegation_queue.open();
-						RSync::wait_readers(this);
-						execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
-						this->delegation_queue.flush();
-						this->mutex_lock.unlock();
-						mutex_lock.notify_all();
-						return;
-					} else {
-						if(enqueue<Function, f>(&result, (&ps)...) == DQueue::status::SUCCESS) {
-							return;
-						}
-					}
-					pause();
+			
+			typename DQueue::status status = DQueue::status::CLOSED;;
+			
+			/* for guaranteed starvation freedom add a limit here */
+			for(unsigned int retries = 1; /* no limit */; retries++) {
+				if(this->mutex_lock.try_lock(retries)) {
+					helper<Function, f, Promise, RSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+					return;
 				}
-				mutex_lock.wait();
+				/* retry enqueueing a couple of times if CLOSED
+				 * TODO: magic number */
+				for(int i = 1; i <= 32; i++) {
+					status = enqueue<Function, f>(&result, (&ps)...);
+					if(status == DQueue::status::SUCCESS) {
+						return;
+					} else if(status == DQueue::status::FULL) {
+						qd::pause();
+						break;
+					} else {
+						qd::pause();
+					}
+				}
+				
 			}
+			/* dead code: stub for starvation-free variant */
+			this->mutex_lock.lock();
+			helper<Function, f, Promise, RSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+			this->mutex_lock.unlock();
 		}
 };
 
