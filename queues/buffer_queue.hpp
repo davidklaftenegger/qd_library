@@ -18,7 +18,7 @@ class buffer_queue {
 	static constexpr long aligned(long size) {
 		return ((size + sizeof(sizetype) - 1) / sizeof(sizetype)) * sizeof(sizetype); /* TODO: better way of computing a ceil? */
 	}
-	
+
 	/** type for function pointers to be stored in this queue */
 //	typedef std::function<void(char*)> ftype;
 	typedef void(*ftype)(char*);
@@ -26,20 +26,19 @@ class buffer_queue {
 	/** counter for how much of the buffer is currently in use; offset to free area in buffer_array */
 	std::atomic<long> counter;
 	/** optimization flag: no writes when queue in known-closed state */
-	std::atomic<bool> closed; /*TODO atomic_flag? */
+	std::atomic<status> closed; /*TODO atomic_flag? */
 	/** the buffer for entries to this queue */
 	std::array<char, ARRAY_SIZE> buffer_array;
 
 	public:
-		/* some constants */
-		static constexpr bool CLOSED = false;
-		static constexpr bool SUCCESS = true;
+		/** constants for current state of the queue */
+		enum status { OPEN=0, SUCCESS=0, FULL, CLOSED }; 
 
-		buffer_queue() : counter(ARRAY_SIZE), closed(true) {}
+		buffer_queue() : counter(ARRAY_SIZE), closed(FULL) {}
 		/** opens the queue */
 		void open() {
 			counter.store(0, std::memory_order_relaxed);
-			closed.store(false, std::memory_order_relaxed);
+			closed.store(OPEN, std::memory_order_relaxed);
 		}
 
 		void forwardall(long) {};
@@ -53,12 +52,13 @@ class buffer_queue {
 		 * @brief enqueues an entry
 		 * @tparam P return type of associated function
 		 * @param op wrapper function for associated function
-		 * @return SUCCESS on successful storing in queue, CLOSED otherwise
+		 * @return SUCCESS on successful storing in queue, FULL if the queue is full and CLOSED if the queue is closed explicitly
 		 */
 		template<typename... Ps>
-		bool enqueue(void (*op)(char*), Ps*... ps) {
-			if(closed.load(std::memory_order_relaxed)) { //TODO MEMORDER
-				return CLOSED;
+		status enqueue(void (*op)(char*), Ps*... ps) {
+			auto current_status = closed.load(std::memory_order_relaxed);
+			if(current_status != OPEN) {
+				return current_status;
 			}
 			/* entry size = size of size + size of wrapper functor + size of promise + size of all parameters*/
 			constexpr long size = aligned(sizeof(sizetype) + sizeof(op) + sumsizes<Ps...>::size);
@@ -75,7 +75,8 @@ class buffer_queue {
 				if(index < static_cast<long>(ARRAY_SIZE - sizeof(sizetype))) {
 					reinterpret_cast<sizetype*>(&buffer_array[index])->store(ARRAY_SIZE+1, std::memory_order_release); // TODO MEMORDER
 				}
-				return CLOSED;
+					closed.store(FULL, std::memory_order_relaxed);
+				return FULL;
 			}
 		}
 
@@ -89,12 +90,12 @@ class buffer_queue {
 				if(todo == done) { /* close queue */
 					todo = counter.exchange(ARRAY_SIZE, std::memory_order_relaxed);
 					open = false;
-					closed.store(true, std::memory_order_relaxed);
+					closed.store(CLOSED, std::memory_order_relaxed);
 				}
 				if(todo >= static_cast<long>(ARRAY_SIZE)) { /* queue closed */
 					todo = ARRAY_SIZE;
 					open = false;
-					closed.store(true, std::memory_order_relaxed);
+					closed.store(CLOSED, std::memory_order_relaxed);
 				}
 				long last_size = 0;
 				for(long index = done; index < todo; index+=aligned(last_size)) {

@@ -472,7 +472,7 @@ class qdlock_base {
 			std::enable_if<
 				!std::is_same<Function, std::nullptr_t>::value
 				&& !std::is_same<R, void>::value
-			, bool>::type
+			, typename DQueue::status>::type
 		{
 			static_assert(std::is_same<R, decltype(f((*ps)...))>::value, "promise and function have different return types");
 			void (*d)(char*) = delegated_function_future<types<Ps...>, Function, f>;
@@ -487,7 +487,7 @@ class qdlock_base {
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
 				&& !std::is_same<R, void>::value
-			, bool>::type
+			, typename DQueue::status>::type
 		{
 			static_assert(std::is_same<R, decltype((*f)(*ps...))>::value, "promise and function have different return types");
 			void (*d)(char*) = delegated_function_future<types<Function, Ps...>, std::nullptr_t, nullptr>;
@@ -498,7 +498,7 @@ class qdlock_base {
 		/* case Ab */
 		template<typename Function, Function f, typename... Ps>
 		auto enqueue(std::promise<void>* r, Ps*... ps)
-		-> bool {
+		-> typename DQueue::status {
 			void (*d)(char*) = delegated_void_function_future<types<Ps...>, Function, f>;
 			return delegation_queue.enqueue(d, ps..., std::move(r));
 		}
@@ -509,7 +509,7 @@ class qdlock_base {
 		-> typename
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
-			, bool>::type
+			, typename DQueue::status>::type
 		{
 			static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
 			void (*d)(char*) = delegated_void_function_future<types<Ps...>, std::nullptr_t, nullptr>;
@@ -521,7 +521,7 @@ class qdlock_base {
 		/* case Ac */
 		template<typename Function, Function f, typename... Ps>
 		auto enqueue(std::nullptr_t*, Ps*... ps)
-		-> typename std::enable_if<!std::is_same<Function, std::nullptr_t>::value, bool>::type
+		-> typename std::enable_if<!std::is_same<Function, std::nullptr_t>::value, typename DQueue::status>::type
 		{
 			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, Function, f>;
 			return delegation_queue.enqueue(d, ps...);
@@ -531,7 +531,7 @@ class qdlock_base {
 		/* case Bc */
 		template<typename Ignored, std::nullptr_t i, typename... Ps>
 		auto enqueue(std::nullptr_t*, Ps*... ps)
-		-> bool
+		-> typename DQueue::status
 		{
 			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, std::nullptr_t, nullptr>;
 			return delegation_queue.enqueue(d, ps...);
@@ -604,7 +604,7 @@ class qdlock_base {
 						mutex_lock.notify_all();
 						return;
 					} else {
-						if(enqueue<Function, f>(&result, (&ps)...) == DQueue::SUCCESS) {
+						if(enqueue<Function, f>(&result, (&ps)...) == DQueue::status::SUCCESS) {
 							return;
 						}
 					}
