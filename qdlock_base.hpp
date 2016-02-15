@@ -482,7 +482,7 @@ class qdlock_base {
 		/** alternative with returning a result, case function specified as argument */
 		/* case Ba */
 		template<typename Ignored, std::nullptr_t i, typename R, typename Function, typename... Ps>
-		auto enqueue2(std::promise<R>* r, Function* f, Ps*... ps)
+		auto enqueue(std::promise<R>* r, Function* f, Ps*... ps)
 		-> typename
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
@@ -491,7 +491,7 @@ class qdlock_base {
 		{
 			static_assert(std::is_same<R, decltype((*f)(*ps...))>::value, "promise and function have different return types");
 			void (*d)(char*) = delegated_function_future<types<Function, Ps...>, std::nullptr_t, nullptr>;
-			return delegation_queue.enqueue(d, std::move(f), std::move(ps...), std::move(r));
+			return delegation_queue.enqueue(d, std::move(f), std::move(ps)..., std::move(r));
 		}
 
 		/** alternative for operations which return void */
@@ -505,7 +505,7 @@ class qdlock_base {
 		/** alternative with returning a void, case function specified as argument */
 		/* case Bb */
 		template<typename Ignored, std::nullptr_t i, typename R, typename... Ps>
-		auto enqueue2(std::promise<void>* r, Ps*... ps)
+		auto enqueue(std::promise<void>* r, Ps*... ps)
 		-> typename
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
@@ -526,11 +526,11 @@ class qdlock_base {
 			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, Function, f>;
 			return delegation_queue.enqueue(d, ps...);
 		}
-		
+
 		/** alternative without returning a result, case function specified as argument */
 		/* case Bc */
 		template<typename Ignored, std::nullptr_t i, typename... Ps>
-		auto enqueue2(std::nullptr_t*, Ps*... ps)
+		auto enqueue(std::nullptr_t*, Ps*... ps)
 		-> typename DQueue::status
 		{
 			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, std::nullptr_t, nullptr>;
