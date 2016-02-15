@@ -289,9 +289,9 @@ class qdlock_base {
 	protected:
 		MLock mutex_lock;
 		DQueue delegation_queue;
-		
+
 		/** executes the operation */
-		
+
 		/* case 1Aa */
 		template<typename Function, Function f, typename Promise, typename... Ps>
 		auto execute(Promise r, Ps&&... ps)
@@ -305,7 +305,7 @@ class qdlock_base {
 //			static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
 			r.set_value(f(std::move(ps)...));
 		}
-		
+
 		/** alternative for operations with a promise, case member function pointer in template, object specified */
 		/* case 2Aa */
 		template<typename Function, Function f, typename R, typename O, typename... Ps>
@@ -320,12 +320,12 @@ class qdlock_base {
 		//	static_assert(std::is_same<R, decltype(f(ps...))>::value, "promise and function have different return types");
 			r.set_value((o.*f)(std::move(ps)...));
 		}
-		
+
 		/** alternative for operations with a promise, case function pointer specified */
 		/* case 1Ba */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename... Ps>
 		auto execute(std::promise<typename std::result_of<Function(Ps...)>::type> r, Function&& f, Ps&&... ps)
-		-> typename 
+		-> typename
 			std::enable_if<
 				std::is_same<Ignored, std::nullptr_t>::value
 				&& !std::is_same<void, typename std::result_of<Function(Ps...)>::type>::value
@@ -335,7 +335,7 @@ class qdlock_base {
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
 			r.set_value(f(std::move(ps)...));
 		}
-		
+
 		/** alternative for operations witht a promise, case member function pointer and object specified */
 		/* case 2Ba */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
@@ -350,7 +350,7 @@ class qdlock_base {
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
 			r.set_value((o.*f)(std::move(ps)...));
 		}
-		
+
 		/** alternative for operations which return void */
 		/* case 1Ab */
 		template<typename Function, Function f, typename Promise, typename... Ps>
@@ -365,7 +365,7 @@ class qdlock_base {
 			f(std::move(ps)...);
 			r.set_value();
 		}
-		
+
 		/** alternative for operations with a promise, case member function pointer in template, object specified */
 		/* case 2Ab */
 		template<typename Function, Function f, typename R, typename O, typename... Ps>
@@ -381,7 +381,7 @@ class qdlock_base {
 			(o.*f)(std::move(ps)...);
 			r.set_value();
 		}
-		
+
 		/** alternative for operations with a promise, case function pointer specified */
 		/* case 1Bb */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename... Ps>
@@ -393,7 +393,7 @@ class qdlock_base {
 			f(std::move(ps)...);
 			r.set_value();
 		}
-		
+
 		/** alternative for operations witht a promise, case member function pointer and object specified */
 		/* case 2Bb */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
@@ -409,7 +409,7 @@ class qdlock_base {
 			(o.*f)(std::move(ps)...);
 			r.set_value();
 		}
-		
+
 		/** alternative for operations without a promise, case function pointer in template */
 		/* case 1Ac */
 		template<typename Function, Function f, typename Promise, typename... Ps>
@@ -436,7 +436,7 @@ class qdlock_base {
 		{
 			(o.*f)(std::move(ps)...);
 		}
-		
+
 		/** alternative for operations without a promise, case function pointer specified */
 		/* case 1Bc */
 		template<typename Ignored, Ignored i, typename Promise, typename Function, typename... Ps>
@@ -446,7 +446,7 @@ class qdlock_base {
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
 			f(std::move(ps)...);
 		}
-		
+
 		/** alternative for operations without a promise, case member function pointer and object specified */
 		/* case 2Bc */
 		template<typename Ignored, Ignored i, typename Promise, typename Function, typename O, typename... Ps>
@@ -460,10 +460,10 @@ class qdlock_base {
 			static_assert(std::is_same<Ignored, std::nullptr_t>::value, "functors cannot be used when specifying a function");
 			(o.*f)(std::move(ps)...);
 		}
-		
-		
+
+
 		/* ENQUEUE IMPLEMENTATIONS */
-		
+
 		/** maybe enqueues the operation */
 		/* case Aa */
 		template<typename Function, Function f, typename R, typename... Ps>
@@ -478,7 +478,7 @@ class qdlock_base {
 			void (*d)(char*) = delegated_function_future<types<Ps...>, Function, f>;
 			return delegation_queue.enqueue(d, std::move(ps)..., std::move(r));
 		}
-		
+
 		/** alternative with returning a result, case function specified as argument */
 		/* case Ba */
 		template<typename Ignored, std::nullptr_t i, typename R, typename Function, typename... Ps>
@@ -516,7 +516,7 @@ class qdlock_base {
 			return delegation_queue.enqueue(d, std::move(ps...), std::move(r));
 		}
 
-		
+
 		/** alternative without returning a result, case function specified in template */
 		/* case Ac */
 		template<typename Function, Function f, typename... Ps>
@@ -586,7 +586,7 @@ class qdlock_base {
 				return p.get_future();
 			}
 		};
-		
+
 		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
 		auto helper(Promise&& result, Ps&&... ps)
 		-> void {
