@@ -70,17 +70,22 @@ class futex_lock {
 		 *         false after waiting for an unlock() operation on the lock.
 		 */
 		bool try_lock_or_wait() {
-			if(this->is_locked()) {
-				if(locked.load(std::memory_order_acquire) != contended) {
-					field_t c = locked.exchange(contended);
-					if(c == free) {
-						return true;
-					}
+			field_t c = locked.load(std::memory_order_acquire);
+			if(c == free) {
+				if(locked.compare_exchange_strong(c, taken, std::memory_order_acq_rel, std::memory_order_relaxed)) {
+					return true;
 				}
-				wait();
-				return false;
 			}
-			return try_lock();
+			/* not free (or CAS failed because no longer free) */
+			if(c != contended) {
+				c = locked.exchange(contended);
+				if(c == free) {
+					return true;
+				}
+			}
+			/* contended (or was taken and swapped to contended) */
+			wait();
+			return false;
 		}
 
 		/**
