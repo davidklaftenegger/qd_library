@@ -597,35 +597,50 @@ class qdlock_base {
 			this->mutex_lock.unlock();
 		}
 
+		template<typename Function, Function f, typename Promise, typename... Ps>
+		bool try_enqueue(int attempts, Promise* result, Ps... ps) {
+			typename DQueue::status status = DQueue::status::CLOSED;;
+			for(int i = 1; i <= attempts; i++) {
+				status = enqueue<Function, f>(result, ps...);
+				if(status == DQueue::status::SUCCESS) {
+					return true;
+				} else if(status == DQueue::status::FULL) {
+					qd::pause();
+					break;
+				} else {
+					qd::pause();
+				}
+			}
+			return false;
+		}
 		//-> typename std::conditional<std::is_same<std::nullptr_t, typename Promise::promise>::value, void, typename Promise::future>::type
 		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
 		auto delegate(Promise&& result, Ps&&... ps)
 		-> void
 		{
 			RSync::wait_writers(this);
-			
-			typename DQueue::status status = DQueue::status::CLOSED;;
-			
+
 			/* for guaranteed starvation freedom add a limit here */
 			for(unsigned int retries = 1; /* no limit */; retries++) {
-				if(this->mutex_lock.try_lock(retries)) {
+				/* retry enqueueing a couple of times if CLOSED
+				 * TODO: magic number(s) tuning */
+				//int magic = (retries%128 <= 1)?1:32;
+				if (try_enqueue<Function, f>(1, &result, (&ps)...)) {
+					return;
+				}
+
+				bool lock_acquired;
+				/** @todo magic number 127 */
+				if(retries % (127 + 1) == 0) {
+					lock_acquired = this->mutex_lock.try_lock_or_wait();
+				} else {
+					lock_acquired = this->mutex_lock.try_lock();
+				}
+				if(lock_acquired) {
 					helper<Function, f, Promise, RSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 					return;
 				}
-				/* retry enqueueing a couple of times if CLOSED
-				 * TODO: magic number */
-				for(int i = 1; i <= 32; i++) {
-					status = enqueue<Function, f>(&result, (&ps)...);
-					if(status == DQueue::status::SUCCESS) {
-						return;
-					} else if(status == DQueue::status::FULL) {
-						qd::pause();
-						break;
-					} else {
-						qd::pause();
-					}
-				}
-				
+
 			}
 			/* dead code: stub for starvation-free variant */
 			this->mutex_lock.lock();
