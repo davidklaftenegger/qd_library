@@ -34,21 +34,19 @@ class thread_id_store {
 			}
 		}
 };
-unsigned long thread_id_store::max_id = 0;
-std::set<unsigned long> thread_id_store::orphans;
-std::mutex thread_id_store::mutex;
 
-class thread_id {
+class thread_id_t {
 	unsigned long id;
 	public:
 		operator unsigned long() {
 			return id;
 		}
-		thread_id() : id(thread_id_store::get()) {}
-		~thread_id() {
+		thread_id_t() : id(thread_id_store::get()) {}
+		~thread_id_t() {
 			thread_id_store::free(id);
 		}
 };
-static thread_local thread_id thread_id;
+
+extern thread_local thread_id_t thread_id;
 
 #endif // threadid_hpp
