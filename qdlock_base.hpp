@@ -606,7 +606,7 @@ class qdlock_base {
 					return true;
 				} else if(status == DQueue::status::FULL) {
 					qd::pause();
-					break;
+					//break;
 				} else {
 					qd::pause();
 				}
@@ -620,18 +620,21 @@ class qdlock_base {
 		{
 			RSync::wait_writers(this);
 
+			//if (try_enqueue<Function, f>(1, &result, (&ps)...)) {
+			//	return;
+			//}
 			/* for guaranteed starvation freedom add a limit here */
 			for(unsigned int retries = 1; /* no limit */; retries++) {
 				/* retry enqueueing a couple of times if CLOSED
 				 * TODO: magic number(s) tuning */
-				//int magic = (retries%128 <= 1)?1:32;
-				if (try_enqueue<Function, f>(1, &result, (&ps)...)) {
+				int magic = (retries%128 <= 1)?1:32;
+				if (try_enqueue<Function, f>(magic, &result, (&ps)...)) {
 					return;
 				}
 
 				bool lock_acquired;
 				/** @todo magic number 127 */
-				if(retries % (127 + 1) == 0) {
+				if(retries % (2 + 1) == 0) {
 					lock_acquired = this->mutex_lock.try_lock_or_wait();
 				} else {
 					lock_acquired = this->mutex_lock.try_lock();
@@ -640,7 +643,7 @@ class qdlock_base {
 					helper<Function, f, Promise, RSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 					return;
 				}
-
+				qd::pause();
 			}
 			/* dead code: stub for starvation-free variant */
 			this->mutex_lock.lock();

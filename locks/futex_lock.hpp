@@ -15,9 +15,8 @@
  * @note lock() and unlock() are taken from mutex in http://www.akkadia.org/drepper/futex.pdf with additional documentation used from http://locklessinc.com/articles/mutex_cv_futex/
  */
 class futex_lock {
-	using field_t = int;
+	enum field_t { free, taken, contended };
 	std::atomic<field_t> locked;
-	enum { free, taken, contended };
 	public:
 		futex_lock() : locked(free) {}
 		futex_lock(futex_lock&) = delete; /* TODO? */
@@ -93,8 +92,7 @@ class futex_lock {
 		 * @return true iff the lock is taken, false otherwise
 		 */
 		bool is_locked() {
-			//return locked.load(std::memory_order_acquire) != free;
-			return locked.load(std::memory_order_relaxed) != free;
+			return locked.load(std::memory_order_acquire) != free;
 		}
 
 	private:
