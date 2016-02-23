@@ -7,6 +7,7 @@
 #include<stack>
 #include<sys/syscall.h>
 #include<sys/param.h>
+#include<thread>
 #include "util/pause.hpp"
 
 struct mcs_node {
@@ -160,7 +161,7 @@ class mcs_futex_lock {
 		bool try_lock_or_wait() {
 			field_t c = locked.load(std::memory_order_acquire); /*TODO acq or relaxed*/
 			mynode = mcs_node_store.get();
-			field_t flagged;
+			field_t flagged = c | flag;
 			while((c & flag) != flag) {
 				if(c == free) {
 					if(this->locked.compare_exchange_strong(c, reinterpret_cast<field_t>(mynode))) {
