@@ -35,7 +35,7 @@ class unpack_promise : public Promise<R> {
 
 /* case 2Aa */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
-auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
+static inline auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -50,7 +50,7 @@ auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 
 /* case 2Ba */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
-auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
+static inline auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -65,7 +65,7 @@ auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 
 /* case 1Aa */
 template<typename Types, typename Function, Function f, typename... Ps>
-auto delegated_function_future(char* pptr, Ps&&... ps)
+static inline auto delegated_function_future(char* pptr, Ps&&... ps)
 -> typename std::enable_if<std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	typedef decltype(f(ps...)) R;
@@ -75,7 +75,7 @@ auto delegated_function_future(char* pptr, Ps&&... ps)
 
 /* case 1Ba */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
-auto delegated_function_future(char* pptr, Function&& f, Ps&&... ps)
+static inline auto delegated_function_future(char* pptr, Function&& f, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -90,7 +90,7 @@ auto delegated_function_future(char* pptr, Function&& f, Ps&&... ps)
 
 /* cases Aa?, unrolling */
 template<typename Types, typename Function, Function f, typename... Ps>
-auto delegated_function_future(char* buf, Ps&&... ps)
+static inline auto delegated_function_future(char* buf, Ps&&... ps)
 -> typename std::enable_if<!std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	typedef typename Types::type T;
@@ -100,7 +100,7 @@ auto delegated_function_future(char* buf, Ps&&... ps)
 
 /* cases Ba?, unrolling */
 template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
-auto delegated_function_future(char* buf, Ps&&... ps)
+static inline auto delegated_function_future(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		true
@@ -115,7 +115,7 @@ auto delegated_function_future(char* buf, Ps&&... ps)
 
 /* case 2Ab */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
-auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
+static inline auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -132,7 +132,7 @@ auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 
 /* case 2Bb */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
-auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
+static inline auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -149,7 +149,7 @@ auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 /** wrapper function for void operations */
 /* 1Ab */
 template<typename Types, typename Function, Function f, typename... Ps>
-auto delegated_void_function_future(char* pptr, Ps&&... ps)
+static inline auto delegated_void_function_future(char* pptr, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -163,7 +163,7 @@ auto delegated_void_function_future(char* pptr, Ps&&... ps)
 }
 /* case 1Bb */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
-auto delegated_void_function_future(char* pptr, Function&& f, Ps&&... ps)
+static inline auto delegated_void_function_future(char* pptr, Function&& f, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -180,7 +180,7 @@ auto delegated_void_function_future(char* pptr, Function&& f, Ps&&... ps)
 
 /* Ab unrolling */
 template<typename Types, typename Function, Function f, typename... Ps>
-auto delegated_void_function_future(char* buf, Ps&&... ps)
+static inline auto delegated_void_function_future(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		!std::is_same<types<>, Types>::value
@@ -193,7 +193,7 @@ auto delegated_void_function_future(char* buf, Ps&&... ps)
 }
 /* cases Bb, unrolling */
 template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
-auto delegated_void_function_future(char* buf, Ps&&... ps)
+static inline auto delegated_void_function_future(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, typename Types::tail>::value
@@ -208,7 +208,7 @@ auto delegated_void_function_future(char* buf, Ps&&... ps)
 /** wrapper function for operations without associated future */
 /* case 2Ac */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
-auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
+static inline auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -221,7 +221,7 @@ auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 
 /* case 2Bc */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
-auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
+static inline auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -234,7 +234,7 @@ auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
 
 /* case 1Ac */
 template<typename Types, typename Function, Function f, typename... Ps>
-auto delegated_function_nofuture(char*, Ps&&... ps)
+static inline auto delegated_function_nofuture(char*, Ps&&... ps)
 -> typename std::enable_if<std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	f(std::forward<Ps>(ps)...);
@@ -242,7 +242,7 @@ auto delegated_function_nofuture(char*, Ps&&... ps)
 
 /* case 1Bc */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
-auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
+static inline auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -255,7 +255,7 @@ auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
 
 /* cases Ac, unrolling */
 template<typename Types, typename Function, Function f, typename... Ps>
-auto delegated_function_nofuture(char* buf, Ps&&... ps)
+static inline auto delegated_function_nofuture(char* buf, Ps&&... ps)
 -> typename std::enable_if<!std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	typedef typename Types::type T;
@@ -265,7 +265,7 @@ auto delegated_function_nofuture(char* buf, Ps&&... ps)
 
 /* cases Bc, unrolling */
 template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
-auto delegated_function_nofuture(char* buf, Ps&&... ps)
+static inline auto delegated_function_nofuture(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		true
