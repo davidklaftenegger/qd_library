@@ -45,7 +45,7 @@ class buffer_queue {
 		 * @return SUCCESS on successful storing in queue, FULL if the queue is full and CLOSED if the queue is closed explicitly
 		 */
 		template<typename... Ps>
-		status enqueue(void (*op)(char*), Ps*... ps) {
+		status enqueue(ftype op, Ps*... ps) {
 			auto current_status = closed.load(std::memory_order_relaxed);
 			if(current_status != status::OPEN) {
 				return current_status;
@@ -88,7 +88,7 @@ class buffer_queue {
 					closed.store(status::CLOSED, std::memory_order_relaxed);
 				}
 				long last_size = 0;
-				for(long index = done; index < todo; index+=aligned(last_size)) {
+				for(long index = done; index < ARRAY_SIZE-sizeof(sizetype) && index < todo; index+=last_size) {
 					/* synchronization on entry size field: 0 until entry available */
 					do {
 						last_size = reinterpret_cast<sizetype*>(&buffer_array[index])->load(std::memory_order_acquire);
