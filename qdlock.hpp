@@ -3,17 +3,19 @@
 
 #include "qdlock_base.hpp"
 
+
 /**
  * @brief queue delegation lock implementation
  * @tparam MLock mutual exclusion lock
  * @tparam DQueue delegation queue
  */
-template<class MLock, class DQueue>
-class qdlock_impl : private qdlock_base<MLock, DQueue> {
-	typedef qdlock_base<MLock, DQueue> base;
+template<class MLock, class DQueue, starvation_policy_t starvation_policy=starvation_policy_t::starvation_free>
+class qdlock_impl : private qdlock_base<MLock, DQueue, starvation_policy> {
+	typedef qdlock_base<MLock, DQueue, starvation_policy> base;
 	template<class, class> friend class qd_condition_variable_impl;
 	public:
 		typedef typename base::no_reader_sync reader_indicator_t;
+		typedef typename base::no_hierarchy_sync hierarchy_t;
 #if 0
 		/**
 		 * @brief delegate function
@@ -47,14 +49,14 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 			/* template provides function address */
 			using promise_t = typename base::no_promise::promise;
 			using reader_sync_t = typename base::no_reader_sync;
-			base::template delegate<Function, f, promise_t, reader_sync_t, Ps...>(nullptr, std::forward<Ps>(ps)...);
+			base::template delegate<Function, f, promise_t, reader_sync_t, hierarchy_t, Ps...>(nullptr, std::forward<Ps>(ps)...);
 		}
 		template<typename Function, typename... Ps>
 		void delegate_n(Function&& f, Ps&&... ps) {
 			/* type of functor/function ptr stored in f, set template function pointer to NULL */
 			using promise_t = typename base::no_promise::promise;
 			using reader_sync_t = typename base::no_reader_sync;
-			base::template delegate<std::nullptr_t, nullptr, promise_t, reader_sync_t, Function, Ps...>(nullptr, std::forward<Function>(f), std::forward<Ps>(ps)...);
+			base::template delegate<std::nullptr_t, nullptr, promise_t, reader_sync_t, hierarchy_t, Function, Ps...>(nullptr, std::forward<Function>(f), std::forward<Ps>(ps)...);
 		}
 
 		/* interface _f functions: Provide a future for the return value of the delegated operation */
@@ -68,7 +70,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 			using reader_sync_t = typename base::no_reader_sync;
 			auto result = promise_factory::create_promise();
 			auto future = promise_factory::create_future(result);
-			base::template delegate<Function, f, promise_t, reader_sync_t, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+			base::template delegate<Function, f, promise_t, reader_sync_t, hierarchy_t, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 			return future;
 		}
 		template<typename Function, typename... Ps>
@@ -82,7 +84,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 			using reader_sync_t = typename base::no_reader_sync;
 			auto result = promise_factory::create_promise();
 			auto future = promise_factory::create_future(result);
-			base::template delegate<std::nullptr_t, nullptr, promise_t, reader_sync_t, Function, Ps...>(std::move(result), std::forward<Function>(f), std::forward<Ps>(ps)...);
+			base::template delegate<std::nullptr_t, nullptr, promise_t, reader_sync_t, hierarchy_t, Function, Ps...>(std::move(result), std::forward<Function>(f), std::forward<Ps>(ps)...);
 			return future;
 		}
 
@@ -93,7 +95,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 		{
 			using no_promise = typename base::no_promise::promise;
 			using reader_sync_t = typename base::no_reader_sync;
-			base::template delegate<Function, f, no_promise, reader_sync_t, Ps...>(nullptr, std::forward<Promise>(result), std::forward<Ps>(ps)...);
+			base::template delegate<Function, f, no_promise, reader_sync_t, hierarchy_t, Ps...>(nullptr, std::forward<Promise>(result), std::forward<Ps>(ps)...);
 		}
 		template<typename Function, typename Promise, typename... Ps>
 		auto delegate_p(Function&& f, Promise&& result, Ps&&... ps)
@@ -102,7 +104,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 			/* type of functor/function ptr stored in f, set template function pointer to NULL */
 			using no_promise = typename base::no_promise::promise;
 			using reader_sync_t = typename base::no_reader_sync;
-			base::template delegate<std::nullptr_t, nullptr, no_promise, reader_sync_t, Function, Promise, Ps...>(nullptr, std::forward<Function>(f), std::forward<Promise>(result), std::forward<Ps>(ps)...);
+			base::template delegate<std::nullptr_t, nullptr, no_promise, reader_sync_t, hierarchy_t, Function, Promise, Ps...>(nullptr, std::forward<Function>(f), std::forward<Promise>(result), std::forward<Ps>(ps)...);
 		}
 
 		/* interface _fp functions: Promise is generated here, but delegated function uses it explicitly. */
@@ -116,7 +118,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 			using reader_sync_t = typename base::no_reader_sync;
 			auto result = promise_factory::create_promise();
 			auto future = promise_factory::create_future(result);
-			base::template delegate<Function, f, no_promise, reader_sync_t, promise_t, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+			base::template delegate<Function, f, no_promise, reader_sync_t, hierarchy_t, promise_t, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 			return future;
 		}
 		template<typename Return, typename Function, typename... Ps>
@@ -130,7 +132,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue> {
 			using reader_sync_t = typename base::no_reader_sync;
 			auto result = promise_factory::create_promise();
 			auto future = promise_factory::create_future(result);
-			base::template delegate<std::nullptr_t, nullptr, no_promise, reader_sync_t, Function, promise_t, Ps...>(nullptr, std::forward<Function>(f), std::move(result), std::forward<Ps>(ps)...);
+			base::template delegate<std::nullptr_t, nullptr, no_promise, reader_sync_t, hierarchy_t, Function, promise_t, Ps...>(nullptr, std::forward<Function>(f), std::move(result), std::forward<Ps>(ps)...);
 			return future;
 		}
 		

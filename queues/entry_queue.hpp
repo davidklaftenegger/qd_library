@@ -93,7 +93,7 @@ class entry_queue {
 					} while(!fun);
 
 					/* call functor with pointer to promise (of unknown type) */
-					(*fun)(&entry_array[index].buf[0]);
+					fun(&entry_array[index].buf[0]);
 
 					/* cleanup: call destructor of (now empty) functor and clear buffer area */
 //					fun->~ftype();

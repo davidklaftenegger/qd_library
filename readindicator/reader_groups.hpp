@@ -5,23 +5,29 @@
 
 template<int GROUPS>
 class reader_groups {
-	std::array<std::atomic<int>, GROUPS> counters;
+	struct alignas(64) counter_t {
+		char pad1[64];
+		std::atomic<int> cnt;
+		char pad2[64];
+		counter_t() : cnt(0) {}
+	};
+	std::array<counter_t, GROUPS> counters;
 	public:
 		reader_groups() {
 			for(int i = 0; i < GROUPS; i++) {
-				counters[i] = 0;
+				counters[i].cnt.store(0, std::memory_order_release);
 			}
 		}
 		bool query() {
-			for(std::atomic<int>& counter : counters)
-				if(counter.load() > 0) return true;
+			for(counter_t& counter : counters)
+				if(counter.cnt.load(std::memory_order_acquire) > 0) return true;
 			return false;
 		}
 		void arrive() {
-			counters[thread_id % GROUPS] += 1;
+			counters[thread_id % GROUPS].cnt.fetch_add(1, std::memory_order_release);
 		}
 		void depart() {
-			counters[thread_id % GROUPS] -= 1;
+			counters[thread_id % GROUPS].cnt.fetch_sub(1, std::memory_order_release);
 		}
 };
 

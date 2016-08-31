@@ -4,6 +4,7 @@
 #include<atomic>
 #include<unistd.h>
 #include<linux/futex.h>
+#include<map>
 #include<stack>
 #include<sys/syscall.h>
 #include<sys/param.h>
@@ -14,36 +15,8 @@ struct mcs_node {
 	enum field_t { free, taken, contended };
 	std::atomic<field_t> is_locked;
 	std::atomic<mcs_node*> next;
+	mcs_node() : next(nullptr) {}
 };
-class mcs_node_store_t {
-	using node_t = mcs_node;
-	unsigned long counter;
-	std::stack<node_t*> freelist;
-	
-	public:
-		mcs_node_store_t() : counter(0), freelist() {}
-		~mcs_node_store_t() {
-			for(int i = counter; i > 0; i--) {
-				auto n = freelist.top();
-				freelist.pop();
-				delete n;
-			}
-		}
-		node_t* get() {
-			if(freelist.empty()) {
-				counter++;
-				return new node_t();
-			} else {
-				node_t* n = freelist.top();
-				freelist.pop();
-				return n;
-			}
-		}
-		void free(node_t* n) {
-			freelist.push(n);
-		}
-};
-thread_local static mcs_node_store_t mcs_node_store;
 
 /**
  * @brief a MCS based lock with futex functionality
@@ -58,8 +31,8 @@ class mcs_futex_lock {
 	using mcs_node = ::mcs_node;
 	using field_t = size_t;
 	std::atomic<field_t> locked;
-	thread_local static mcs_node* mynode;
 	enum field_status { free=0, flag=0x1 };
+	thread_local static std::map<mcs_futex_lock*, mcs_node> mcs_node_store;
 	public:
 		mcs_futex_lock() : locked(free) {}
 		mcs_futex_lock(mcs_futex_lock&) = delete; /* TODO? */
@@ -70,27 +43,32 @@ class mcs_futex_lock {
 		 *          while waiting for the lock.
 		 */
 		void lock() {
-			mynode = mcs_node_store.get();
-			mynode->next = nullptr;
-			field_t c = this->locked.exchange(reinterpret_cast<field_t>(mynode));
-			mcs_node* found = reinterpret_cast<mcs_node*>(c & ~flag);
+			mcs_node* mynode = &mcs_node_store[this];
+			field_t current = this->locked.load(std::memory_order_relaxed);
+			bool success;
+			field_t f;
+			do {
+				f = current & flag;
+				success = this->locked.compare_exchange_strong(current, reinterpret_cast<field_t>(mynode)|f, std::memory_order_acq_rel);
+			} while(!success);
+			mcs_node* found = reinterpret_cast<mcs_node*>(current ^ f);
 			if(found != nullptr) {
-				mynode->is_locked = mcs_node::taken;
+				mynode->is_locked.store(mcs_node::taken, std::memory_order_release);
 				found->next = mynode;
 				for(int i = 0; i < 512; i++) {
-					if(mynode->is_locked == mcs_node::free) {
+					if(mynode->is_locked.load(std::memory_order_acquire) == mcs_node::free) {
 						break;
 					}
-					std::this_thread::yield();
-					//qd::pause();
+					qd::pause();
 				}
-				if(mynode->is_locked != mcs_node::free) {
-					int status = mynode->is_locked.exchange(mcs_node::contended);
-					if(status == mcs_node::free) {
-						mynode->is_locked = mcs_node::free;
+				if(mynode->is_locked.load(std::memory_order_acquire) == mcs_node::taken) {
+					mcs_node::field_t l = mcs_node::taken;
+					mynode->is_locked.compare_exchange_strong(l, mcs_node::contended, std::memory_order_acq_rel);
+					if(l == mcs_node::free) {
+						return;
 					}
 				}
-				while(mynode->is_locked != mcs_node::free) {
+				while(mynode->is_locked.load(std::memory_order_acquire) != mcs_node::free) {
 					wait(reinterpret_cast<int*>(&mynode->is_locked), static_cast<int>(mcs_node::contended));
 				}
 			}
@@ -102,6 +80,7 @@ class mcs_futex_lock {
 		 *          they will also be woken up.
 		 */
 		void unlock() {
+			mcs_node* mynode = &mcs_node_store[this];
 			/* thread_local mynode is set while locked */
 			field_t c = reinterpret_cast<field_t>(mynode);
 			if(mynode->next == nullptr) {
@@ -109,12 +88,10 @@ class mcs_futex_lock {
 				if(sleep) {
 					c |= flag;
 				}
-				if(this->locked.compare_exchange_strong(c, free)) {
+				if(this->locked.compare_exchange_strong(c, free, std::memory_order_acq_rel)) {
 					if(sleep) {
 						notify_all(reinterpret_cast<int*>(&locked)); /* TODO one instead? */
 					}
-					mcs_node_store.free(mynode);
-					mynode = nullptr;
 					return;
 				} else if((c & ~flag) == reinterpret_cast<field_t>(mynode)) {
 					unlock();
@@ -122,17 +99,16 @@ class mcs_futex_lock {
 				}
 			}
 			while(mynode->next == nullptr) {
-				qd::pause();
-				//std::this_thread::yield();
 				/* wait for nextpointer */
+				qd::pause();
 			}
 			mcs_node* next = mynode->next.load(); /* TODO */
-			int status = next->is_locked.exchange(mcs_node::free);
+
+			int status = next->is_locked.exchange(mcs_node::free, std::memory_order_acq_rel);
 			if(status == mcs_node::contended) {
 				notify_one(reinterpret_cast<int*>(&next->is_locked)); /* there can only be one waiting */
 			}
-			mcs_node_store.free(mynode);
-			mynode = nullptr;
+			mynode->next.store(nullptr, std::memory_order_relaxed);
 		}
 
 		/**
@@ -144,13 +120,8 @@ class mcs_futex_lock {
 				return false;
 			}
 			field_t c = free;
-			mynode = mcs_node_store.get();
-			bool success = this->locked.compare_exchange_strong(c, reinterpret_cast<field_t>(mynode));
-			if(!success) {
-				mcs_node_store.free(mynode);
-				mynode = nullptr;
-			}
-			return success;
+			mcs_node* mynode = &mcs_node_store[this];
+			return this->locked.compare_exchange_strong(c, reinterpret_cast<field_t>(mynode), std::memory_order_acq_rel);
 		}
 
 		/**
@@ -160,22 +131,20 @@ class mcs_futex_lock {
 		 */
 		bool try_lock_or_wait() {
 			field_t c = locked.load(std::memory_order_acquire); /*TODO acq or relaxed*/
-			mynode = mcs_node_store.get();
+			mcs_node* mynode = &mcs_node_store[this];
 			field_t flagged = c | flag;
 			while((c & flag) != flag) {
 				if(c == free) {
-					if(this->locked.compare_exchange_strong(c, reinterpret_cast<field_t>(mynode))) {
+					if(this->locked.compare_exchange_strong(c, reinterpret_cast<field_t>(mynode), std::memory_order_acq_rel)) {
 						return true;
 					}
 					continue;
 				}
 				flagged = c | flag;
-				if(this->locked.compare_exchange_weak(c,flagged)) {
+				if(this->locked.compare_exchange_weak(c,flagged, std::memory_order_acq_rel)) {
 					break;
 				}
 			}
-			mcs_node_store.free(mynode);
-			mynode = nullptr;
 			/* get futexptr to least-significant 32 bit of address, assumes little-endian */
 			int* futexptr = reinterpret_cast<int*>(&locked);
 			wait(futexptr, reinterpret_cast<size_t>(flagged));
@@ -188,6 +157,18 @@ class mcs_futex_lock {
 		 */
 		bool is_locked() {
 			return locked.load(std::memory_order_acquire) != free;
+		}
+
+		/**
+		 * @brief wake threads that are waiting for a lock handover
+		 */
+		void wake() {
+			mcs_node* mynode = &mcs_node_store[this];
+			field_t c = reinterpret_cast<field_t>(mynode);
+			field_t flagged = c | flag;
+			if(locked == flagged) {
+				notify_all(reinterpret_cast<int*>(&locked));
+			}
 		}
 
 	private:
@@ -241,5 +222,6 @@ class mcs_futex_lock {
 		static_assert(__BYTE_ORDER == __LITTLE_ENDIAN, "Your architecture's endianess is currently not supported. Please report this as a bug.");
 };
 
-thread_local mcs_futex_lock::mcs_node* mcs_futex_lock::mynode = nullptr;
+thread_local std::map<mcs_futex_lock*, mcs_node> mcs_futex_lock::mcs_node_store;
+
 #endif /* qd_mcs_futex_lock_hpp */

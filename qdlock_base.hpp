@@ -35,7 +35,7 @@ class unpack_promise : public Promise<R> {
 
 /* case 2Aa */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
-static inline auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
+auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -50,7 +50,7 @@ static inline auto delegated_function_future(char* pptr, O&& o, Ps&&... ps)
 
 /* case 2Ba */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
-static inline auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
+auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -65,7 +65,7 @@ static inline auto delegated_function_future(char* pptr, Function&& f, O&& o, Ps
 
 /* case 1Aa */
 template<typename Types, typename Function, Function f, typename... Ps>
-static inline auto delegated_function_future(char* pptr, Ps&&... ps)
+auto delegated_function_future(char* pptr, Ps&&... ps)
 -> typename std::enable_if<std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	typedef decltype(f(ps...)) R;
@@ -75,7 +75,7 @@ static inline auto delegated_function_future(char* pptr, Ps&&... ps)
 
 /* case 1Ba */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
-static inline auto delegated_function_future(char* pptr, Function&& f, Ps&&... ps)
+auto delegated_function_future(char* pptr, Function&& f, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -90,7 +90,7 @@ static inline auto delegated_function_future(char* pptr, Function&& f, Ps&&... p
 
 /* cases Aa?, unrolling */
 template<typename Types, typename Function, Function f, typename... Ps>
-static inline auto delegated_function_future(char* buf, Ps&&... ps)
+auto delegated_function_future(char* buf, Ps&&... ps)
 -> typename std::enable_if<!std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	typedef typename Types::type T;
@@ -100,7 +100,7 @@ static inline auto delegated_function_future(char* buf, Ps&&... ps)
 
 /* cases Ba?, unrolling */
 template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
-static inline auto delegated_function_future(char* buf, Ps&&... ps)
+auto delegated_function_future(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		true
@@ -115,7 +115,7 @@ static inline auto delegated_function_future(char* buf, Ps&&... ps)
 
 /* case 2Ab */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
-static inline auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
+auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -132,7 +132,7 @@ static inline auto delegated_void_function_future(char* pptr, O&& o, Ps&&... ps)
 
 /* case 2Bb */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
-static inline auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
+auto delegated_void_function_future(char* pptr, Function&& f, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -149,7 +149,7 @@ static inline auto delegated_void_function_future(char* pptr, Function&& f, O&& 
 /** wrapper function for void operations */
 /* 1Ab */
 template<typename Types, typename Function, Function f, typename... Ps>
-static inline auto delegated_void_function_future(char* pptr, Ps&&... ps)
+auto delegated_void_function_future(char* pptr, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -163,7 +163,7 @@ static inline auto delegated_void_function_future(char* pptr, Ps&&... ps)
 }
 /* case 1Bb */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
-static inline auto delegated_void_function_future(char* pptr, Function&& f, Ps&&... ps)
+auto delegated_void_function_future(char* pptr, Function&& f, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -180,7 +180,7 @@ static inline auto delegated_void_function_future(char* pptr, Function&& f, Ps&&
 
 /* Ab unrolling */
 template<typename Types, typename Function, Function f, typename... Ps>
-static inline auto delegated_void_function_future(char* buf, Ps&&... ps)
+auto delegated_void_function_future(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		!std::is_same<types<>, Types>::value
@@ -193,7 +193,7 @@ static inline auto delegated_void_function_future(char* buf, Ps&&... ps)
 }
 /* cases Bb, unrolling */
 template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
-static inline auto delegated_void_function_future(char* buf, Ps&&... ps)
+auto delegated_void_function_future(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, typename Types::tail>::value
@@ -208,7 +208,7 @@ static inline auto delegated_void_function_future(char* buf, Ps&&... ps)
 /** wrapper function for operations without associated future */
 /* case 2Ac */
 template<typename Types, typename Function, Function f, typename O, typename... Ps>
-static inline auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
+auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -221,7 +221,7 @@ static inline auto delegated_function_nofuture(char*, O&& o, Ps&&... ps)
 
 /* case 2Bc */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename O, typename... Ps>
-static inline auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
+auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -234,7 +234,7 @@ static inline auto delegated_function_nofuture(char*, Function&& f, O&& o, Ps&&.
 
 /* case 1Ac */
 template<typename Types, typename Function, Function f, typename... Ps>
-static inline auto delegated_function_nofuture(char*, Ps&&... ps)
+auto delegated_function_nofuture(char*, Ps&&... ps)
 -> typename std::enable_if<std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	f(std::forward<Ps>(ps)...);
@@ -242,7 +242,7 @@ static inline auto delegated_function_nofuture(char*, Ps&&... ps)
 
 /* case 1Bc */
 template<typename Types, typename Ignored, Ignored i, typename Function, typename... Ps>
-static inline auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
+auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
 -> typename
 	std::enable_if<
 		std::is_same<types<>, Types>::value
@@ -255,7 +255,7 @@ static inline auto delegated_function_nofuture(char*, Function&& f, Ps&&... ps)
 
 /* cases Ac, unrolling */
 template<typename Types, typename Function, Function f, typename... Ps>
-static inline auto delegated_function_nofuture(char* buf, Ps&&... ps)
+auto delegated_function_nofuture(char* buf, Ps&&... ps)
 -> typename std::enable_if<!std::is_same<types<>, Types>::value && !std::is_same<Function, std::nullptr_t>::value, void>::type
 {
 	typedef typename Types::type T;
@@ -265,7 +265,7 @@ static inline auto delegated_function_nofuture(char* buf, Ps&&... ps)
 
 /* cases Bc, unrolling */
 template<typename Types, typename Ignored, std::nullptr_t i, typename... Ps>
-static inline auto delegated_function_nofuture(char* buf, Ps&&... ps)
+auto delegated_function_nofuture(char* buf, Ps&&... ps)
 -> typename
 	std::enable_if<
 		true
@@ -278,16 +278,24 @@ static inline auto delegated_function_nofuture(char* buf, Ps&&... ps)
 	delegated_function_nofuture<typename Types::tail, Ignored, i>(buf+sizeof(T), std::forward<Ps>(ps)..., std::forward<T>(*ptr));
 }
 
+/**
+ * @brief policies for starvation freedom
+ */
+enum class starvation_policy_t {may_starve, starvation_free};
 
 /**
  * @brief queue delegation base class
  * @tparam MLock mutual exclusion lock
  * @tparam DQueue delegation queue
  */
-template<class MLock, class DQueue>
+template<class MLock, class DQueue, starvation_policy_t starvation_policy=starvation_policy_t::starvation_free>
 class qdlock_base {
-	protected:
+	public:
+		void* __data;
+		char pad1[128];
 		MLock mutex_lock;
+		char pad2[128];
+	protected:
 		DQueue delegation_queue;
 
 		/** executes the operation */
@@ -536,6 +544,8 @@ class qdlock_base {
 			void (*d)(char*) = delegated_function_nofuture<types<Ps...>, std::nullptr_t, nullptr>;
 			return delegation_queue.enqueue(d, ps...);
 		}
+
+	public:
 		struct no_promise {
 			typedef std::nullptr_t promise;
 			typedef std::nullptr_t future;
@@ -548,8 +558,12 @@ class qdlock_base {
 		};
 
 		struct no_reader_sync {
-			static void wait_writers(qdlock_base<MLock, DQueue>*) {};
-			static void wait_readers(qdlock_base<MLock, DQueue>*) {};
+			static void wait_writers(qdlock_base<MLock, DQueue, starvation_policy>*) {};
+			static void wait_readers(qdlock_base<MLock, DQueue, starvation_policy>*) {};
+		};
+		struct no_hierarchy_sync {
+			static void lock(qdlock_base<MLock, DQueue, starvation_policy>*) {};
+			static void unlock(qdlock_base<MLock, DQueue, starvation_policy>*) {};
 		};
 #if 0
 		template<typename T>
@@ -586,15 +600,25 @@ class qdlock_base {
 				return p.get_future();
 			}
 		};
-
-		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
+	private:
+		template<typename Function, Function f, typename Promise, typename RSync, typename HSync, typename... Ps>
 		auto helper(Promise&& result, Ps&&... ps)
 		-> void {
+			HSync::lock(this);
 			this->delegation_queue.open();
 			RSync::wait_readers(this);
 			execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 			this->delegation_queue.flush();
-			this->mutex_lock.unlock();
+			HSync::unlock(this);
+		}
+
+		template<typename Function, Function f, typename Promise, typename RSync, typename HSync, typename... Ps>
+		auto executor(Promise&& result, Ps&&... ps)
+		-> void {
+			HSync::lock(this);
+			RSync::wait_readers(this);
+			execute<Function, f, Promise, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+			HSync::unlock(this);
 		}
 
 		template<typename Function, Function f, typename Promise, typename... Ps>
@@ -613,41 +637,42 @@ class qdlock_base {
 			}
 			return false;
 		}
+	public:
 		//-> typename std::conditional<std::is_same<std::nullptr_t, typename Promise::promise>::value, void, typename Promise::future>::type
-		template<typename Function, Function f, typename Promise, typename RSync, typename... Ps>
+		template<typename Function, Function f, typename Promise, typename RSync, typename HSync, typename... Ps>
 		auto delegate(Promise&& result, Ps&&... ps)
 		-> void
 		{
 			RSync::wait_writers(this);
 
-			//if (try_enqueue<Function, f>(1, &result, (&ps)...)) {
-			//	return;
-			//}
+			if(this->mutex_lock.try_lock()) {
+				executor<Function, f, Promise, RSync, HSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+				this->mutex_lock.unlock();
+				return;
+			}
 			/* for guaranteed starvation freedom add a limit here */
-			for(unsigned int retries = 1; /* no limit */; retries++) {
-				/* retry enqueueing a couple of times if CLOSED
-				 * TODO: magic number(s) tuning */
-				int magic = (retries%128 <= 1)?1:32;
-				if (try_enqueue<Function, f>(magic, &result, (&ps)...)) {
+			for(unsigned int retries = 1; (starvation_policy == starvation_policy_t::may_starve) || retries < 512; retries++) {
+				/* retry enqueueing a couple of times if CLOSED */
+				if (try_enqueue<Function, f>(1, &result, (&ps)...)) {
 					return;
 				}
-
 				bool lock_acquired;
 				/** @todo magic number 127 */
-				if(retries % (2 + 1) == 0) {
+				if(retries % (127 + 1) == 0) {
 					lock_acquired = this->mutex_lock.try_lock_or_wait();
 				} else {
 					lock_acquired = this->mutex_lock.try_lock();
 				}
 				if(lock_acquired) {
-					helper<Function, f, Promise, RSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+					helper<Function, f, Promise, RSync, HSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+					this->mutex_lock.unlock();
 					return;
 				}
-				qd::pause();
+				std::this_thread::yield();
 			}
-			/* dead code: stub for starvation-free variant */
+			/* if starvation_policy is may_starve, then this is dead code, only relevant for the starvation_free variant */
 			this->mutex_lock.lock();
-			helper<Function, f, Promise, RSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
+			executor<Function, f, Promise, RSync, HSync, Ps...>(std::move(result), std::forward<Ps>(ps)...);
 			this->mutex_lock.unlock();
 		}
 };

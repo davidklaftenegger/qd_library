@@ -13,7 +13,7 @@ class tatas_lock {
 		tatas_lock(tatas_lock&) = delete; /* TODO? */
 		bool try_lock() {
 			if(is_locked()) return false;
-			return !locked.exchange(true, std::memory_order_release);
+			return !locked.exchange(true, std::memory_order_acq_rel);
 		}
 		void unlock() {
 			locked.store(false, std::memory_order_release);
@@ -26,6 +26,7 @@ class tatas_lock {
 				qd::pause();
 			}
 		}
+		void wake() {}
 };
 
 #endif /* qd_tatas_lock_hpp */
