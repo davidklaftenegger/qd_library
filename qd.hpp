@@ -2,6 +2,7 @@
 #define qd_qd_hpp qd_qd_hpp
 
 #include "locks/waitable_lock.hpp"
+#include "locks/pthreads_lock.hpp"
 #include "locks/tatas_lock.hpp"
 #include "locks/mutex_lock.hpp"
 #include "locks/futex_lock.hpp"
