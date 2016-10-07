@@ -41,6 +41,7 @@ matrix:
 
 before_install:
   - sudo apt-get update -qq
+  - sudo apt-get install -y libnuma-dev
 
 script:
 - wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
