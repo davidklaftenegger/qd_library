@@ -21,4 +21,4 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(lockTests lock.hpp ${genfiles})
 target_link_libraries(lockTests qd gtest gtest_main)
-
+add_test(lockTests ${CMAKE_BINARY_DIR}/bin/lockTests)

@@ -1,0 +1,53 @@
+sudo: required
+language: cpp
+
+# thanks to Nick Sarten, http://genbattle.bitbucket.org/blog/2016/01/17/c++-travis-ci/
+matrix:
+  include:
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
+      env: COMPILER=g++-4.9
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env: COMPILER=g++-5
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.6
+          packages:
+            - clang-3.6
+      env: COMPILER=clang++-3.6
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.7
+          packages:
+            - clang-3.7
+      env: COMPILER=clang++-3.7
+
+before_install:
+  - sudo apt-get update -qq
+
+script:
+- wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
+- tar xzf release-1.7.0.tar.gz
+- mv googletest-release-1.7.0 tests/gtest-1.7.0
+- mkdir build
+- cd build
+- cmake -DCMAKE_CXX_COMPILER=$COMPILER ..
+- make -j8
+- make test
