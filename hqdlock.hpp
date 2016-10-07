@@ -1,7 +1,11 @@
 #ifndef qd_hqdlock_hpp
 #define qd_hqdlock_hpp qd_hqdlock_hpp
 
+#include <sched.h>
+#include <unistd.h>
+#ifdef QD_USE_LIBNUMA
 #include <numa.h>
+#endif
 #include "qdlock_base.hpp"
 
 /**
@@ -56,16 +60,22 @@ class hqdlock_impl {
 	public:
 
 		hqdlock_impl() {
-			int amount = numa_num_configured_nodes();
-			numanodes = amount;
-			qdlocks = new base[amount];
-			for(int a = 0; a < amount; a++) {
-				qdlocks[a].__data = reinterpret_cast<void*>(this);
+			int num_cpus = sysconf(_SC_NPROCESSORS_CONF); // sane default
+			numa_mapping.resize(num_cpus, 0);
+			#ifdef QD_USE_LIBNUMA
+			/* use libnuma only if it is actually available */
+			if(numa_available() != -1) {
+				numanodes = numa_num_configured_nodes();
+				/* Initialize the NUMA map */
+				for (int i = 0; i < num_cpus; ++i) {
+					numa_mapping[i] = numa_node_of_cpu(i);
+				}
 			}
-			int num_cpus = numa_num_configured_cpus();
-			numa_mapping.resize(num_cpus);
-			for (int i = 0; i < num_cpus; ++i) {
-				numa_mapping[i] = numa_node_of_cpu(i);
+			#endif
+			/* initialize hierarchy components */
+			qdlocks = new base[numanodes];
+			for(int a = 0; a < numanodes; a++) {
+				qdlocks[a].__data = reinterpret_cast<void*>(this);
 			}
 		}
 		/* the following delegate_XX functions are all specified twice:
@@ -248,16 +258,22 @@ class mrhqdlock_impl {
 	public:
 
 		mrhqdlock_impl() : writeBarrier(0) {
-			int amount = numa_num_configured_nodes();
-			numanodes = amount;
-			qdlocks = new base[amount];
-			for(int a = 0; a < amount; a++) {
-				qdlocks[a].__data = reinterpret_cast<void*>(this);
+			int num_cpus = sysconf(_SC_NPROCESSORS_CONF); // sane default
+			numa_mapping.resize(num_cpus, 0);
+			#ifdef QD_USE_LIBNUMA
+			/* use libnuma only if it is actually available */
+			if(numa_available() != -1) {
+				numanodes = numa_num_configured_nodes();
+				/* Initialize the NUMA map */
+				for (int i = 0; i < num_cpus; ++i) {
+					numa_mapping[i] = numa_node_of_cpu(i);
+				}
 			}
-			int num_cpus = numa_num_configured_cpus();
-			numa_mapping.resize(num_cpus);
-			for (int i = 0; i < num_cpus; ++i) {
-				numa_mapping[i] = numa_node_of_cpu(i);
+			#endif
+			/* initialize hierarchy components */
+			qdlocks = new base[numanodes];
+			for(int a = 0; a < numanodes; a++) {
+				qdlocks[a].__data = reinterpret_cast<void*>(this);
 			}
 		}
 		typedef reader_indicator_sync reader_sync_t;
