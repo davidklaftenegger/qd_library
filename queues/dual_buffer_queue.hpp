@@ -12,7 +12,7 @@
  */
 enum class atomic_instruction_policy_t {use_fetch_and_add, use_compare_and_swap};
 
-void no_op(char*) {}
+static inline void no_op(char*) {}
 
 /**
  * @brief a entry-based tantrum queue with a fixed buffer for parameters

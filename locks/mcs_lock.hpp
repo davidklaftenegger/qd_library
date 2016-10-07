@@ -119,5 +119,4 @@ class mcs_lock {
 		static_assert(__BYTE_ORDER == __LITTLE_ENDIAN, "Your architecture's endianess is currently not supported. Please report this as a bug.");
 };
 
-thread_local std::map<mcs_lock*, mcs_node2> mcs_lock::mcs_node_store;
 #endif /* qd_mcs_lock_hpp */
