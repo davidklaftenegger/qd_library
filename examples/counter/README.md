@@ -28,8 +28,9 @@ additionally builds versions using atomic instructions instead of locks.
 Running
 -------
 You can use the following command to view output including runtimes:
-    for counter in *5 *50 *500; do ./$counter; echo; done
-
+```
+for counter in *5 *50 *500; do ./$counter; echo; done
+```
 
 Results
 -------

@@ -1,7 +1,6 @@
 CXX=clang++
-CXX=clang++
 CXXFLAGS=-O2 -std=c++11 -I../../
-LDFLAGS=-O2 -std=c++11 -pthreads
+LDFLAGS=-O2 -std=c++11 -pthreads -L/usr/local/lib/ -lqd
 
 .PHONY: qd_comparison atomic qd_only all clean
 
@@ -10,7 +9,7 @@ COMPNUMS = 5 50 500
 
 ONLYNUMS = 1 2 3 4 5 6 7 8 9
 
-qd_comparison: $(addprefix counter_qd,${COMPNUMS}) $(addprefix counter_pthreads,${COMPNUMS}) $(addprefix counter_std,${COMPNUMS}) $(addprefix counter_mcsfutex,${COMPNUMS}) $(addprefix counter_futex,${COMPNUMS})
+qd_comparison: $(addprefix counter_qd,${COMPNUMS}) $(addprefix counter_pthreads,${COMPNUMS}) $(addprefix counter_std,${COMPNUMS}) #$(addprefix counter_mcsfutex,${COMPNUMS}) $(addprefix counter_futex,${COMPNUMS})
 
 atomic: $(addprefix counter_atomic,${COMPNUMS})
 
