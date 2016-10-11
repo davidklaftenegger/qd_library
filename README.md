@@ -4,6 +4,9 @@ C++ QD Library
 This is the C++ QD library, which provides implementations of
 Queue Delegation (QD) locks for C++11 programs.
 
+It is distributed under the Simplified BSD License.
+Details can be found in the LICENSE file.
+
 QD locks allow programmers to *delegate* critical sections to a lock. If the
 lock is currently free, this will use an efficient lock implementation.
 However, if the lock is already in use, the critical section will be delegated
