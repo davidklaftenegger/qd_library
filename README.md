@@ -1,5 +1,6 @@
 C++ QD Library
 ==============
+[![Build Status](https://travis-ci.org/davidklaftenegger/qd_library.svg?branch=master)](https://travis-ci.org/davidklaftenegger/qd_library)
 
 This is the C++ QD library, which provides implementations of
 Queue Delegation (QD) locks for C++11 programs.
