@@ -29,11 +29,13 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include_directories("${PROJECT_SOURCE_DIR}")
+
 # put together all source files 
 set(qd_sources "threadid.cpp")
+set(lock_sources locks/mcs_lock.cpp locks/mcs_futex_lock.cpp)
 
-add_library(qd ${qd_sources})
-target_link_libraries(qd qd_locks)
+add_library(qd ${qd_sources} ${lock_sources})
 
 option(QD_USE_LIBNUMA
 	"Use libnuma to determine NUMA structure" ON)
@@ -41,10 +43,6 @@ if(QD_USE_LIBNUMA)
 	target_link_libraries(qd numa)
 	add_definitions(-DQD_USE_LIBNUMA)
 endif(QD_USE_LIBNUMA)
-
-include_directories("${PROJECT_SOURCE_DIR}")
-
-add_subdirectory(locks)
 
 install(TARGETS qd
 	COMPONENT "Runtime"
