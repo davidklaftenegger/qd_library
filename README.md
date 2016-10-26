@@ -61,20 +61,20 @@ Here is a minimal example for how to use them:
 #include<iostream>
 #include<qd.hpp>
 int main() {
-	int* counter = new int;
+	int counter = 0;
 	qdlock lock;
 	std::thread threads[4];
 	for(auto& t : threads) {
 		t = std::thread(
-			[&lock, counter]() {
-				lock.delegate_n([counter]() { (*counter)++; });
+			[&lock, &counter]() {
+				lock.delegate_n([&counter]() { counter++; });
 			}
 		);
 	}
 	for(auto& t : threads) {
 	  t.join();
 	}
-	std::cout << "The counter value is " << *counter << std::endl;
+	std::cout << "The counter value is " << counter << std::endl;
 }
 ```
 
