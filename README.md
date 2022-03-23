@@ -81,7 +81,7 @@ int main() {
 To compile and run a program it may be required to add `/usr/local/include/` to your include path and `/usr/local/lib` to your library path.
 Compiling and running should then work using
 ```
-g++ -I/usr/local/include/qd/ -L/usr/local/lib/ myprogram.cpp -pthread -lqd -o myprogram
+g++ -I/usr/local/include/qd/ -L/usr/local/lib/ -Wl,-rpath=/usr/local/lib/ myprogram.cpp -pthread -lqd -o myprogram
 ./myprogram
 ```
 

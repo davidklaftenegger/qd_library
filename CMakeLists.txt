@@ -35,7 +35,7 @@ include_directories("${PROJECT_SOURCE_DIR}")
 set(qd_sources "threadid.cpp")
 set(lock_sources locks/mcs_lock.cpp locks/mcs_futex_lock.cpp)
 
-add_library(qd ${qd_sources} ${lock_sources})
+add_library(qd SHARED ${qd_sources} ${lock_sources})
 
 option(QD_USE_LIBNUMA
 	"Use libnuma to determine NUMA structure" ON)
