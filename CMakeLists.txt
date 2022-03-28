@@ -1,8 +1,5 @@
-cmake_minimum_required(VERSION 2.8)
-project(QDLibrary)
-# The version number.
-set(QD_VERSION_MAJOR 0)
-set(QD_VERSION_MINOR 1)
+cmake_minimum_required(VERSION 3.3)
+project(QDLibrary VERSION 0.1)
 
 set(DEFAULT_C_FLAGS "-std=c11 -pthread")
 set(DEFAULT_CXX_FLAGS "-std=c++11 -pthread")

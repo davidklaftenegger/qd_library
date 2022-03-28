@@ -8,13 +8,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        dbg: [OFF, ON]
         cxx: [g++,clang++]
-    name: On ${{ matrix.os }} (DBG=${{ matrix.dbg }}) (CXX=${{ matrix.cxx }})
+        dbg: [OFF, ON]
+    name: On ${{ matrix.os }} CXX=${{ matrix.cxx }} DBG=${{ matrix.dbg }}
     runs-on: ${{ matrix.os }}
     env:
-      QD_DBG: ${{ matrix.dbg }}
       QD_CXX: ${{ matrix.cxx }}
+      QD_DBG: ${{ matrix.dbg }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
