@@ -18,8 +18,8 @@ jobs:
         uses: actions/checkout@v2
       - name: Install packages
         run: |
-          sudo apt-get update
-          sudo apt-get install -y doxygen libnuma-dev
+          sudo apt-get update -qq
+          sudo apt-get install -y libnuma-dev
       - name: Before install
         run: ./.github/scripts/get_gtest.sh
       - name: Build
