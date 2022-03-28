@@ -1,6 +1,5 @@
-#!/usr/bin/python
+#! /usr/bin/env python3
 
-from __future__ import print_function
 import itertools
 
 atomic_instr = ["atomic_instruction_policy_t::use_fetch_and_add", "atomic_instruction_policy_t::use_compare_and_swap"]
