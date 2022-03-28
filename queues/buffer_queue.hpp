@@ -12,10 +12,10 @@
  * @brief a buffer-based tantrum queue
  * @tparam ARRAY_SIZE the buffer's size in bytes
  */
-template<long ARRAY_SIZE>
+template<unsigned long ARRAY_SIZE>
 class buffer_queue {
 	/** type for sizes of queue entries */
-	typedef long s_type;
+	typedef unsigned long s_type;
 	/** type for the size field for queue entries, loads must not be optimized away in flush */
 	typedef std::atomic<s_type> sizetype;
 
