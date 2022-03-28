@@ -9,10 +9,12 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         dbg: [OFF, ON]
-    name: On ${{ matrix.os }} (QD_DEBUG=${{ matrix.dbg }})
+        cxx: [g++,clang++]
+    name: On ${{ matrix.os }} (DBG=${{ matrix.dbg }}) (CXX=${{ matrix.cxx }})
     runs-on: ${{ matrix.os }}
     env:
       QD_DBG: ${{ matrix.dbg }}
+      QD_CXX: ${{ matrix.cxx }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
