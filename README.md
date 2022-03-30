@@ -36,25 +36,25 @@ For more details on QD locks see [this website](https://www.it.uu.se/research/gr
 Requirements
 ------------
 
-This library makes use of [libnuma](http://oss.sgi.com/projects/libnuma/), available on Linux.
+This library makes use of [libnuma](https://man7.org/linux/man-pages/man3/numa.3.html), available on Linux.
 For other operating systems support can be turned off, at potential performance costs for NUMA machines.
 To install libnuma on Debian/Ubuntu and derivatives, run
-```bash
+```
 sudo apt-get install libnuma-dev
 ```
 For gentoo, run
-```bash
+```
 sudo emerge sys-process/numactl
 ```
 
 The following compilers are currently supported:
- * GCC: g++ versions 4.9 -- 6
- * Clang: clang++ versions 3.8 -- 3.8
+ * GCC: g++ versions 4.9 -- 10.2.1
+ * Clang: clang++ versions 3.8 -- 11.0.1
 
 Installation
 ------------
 
-```bash
+```
 mkdir build
 cd build
 cmake ../
@@ -93,7 +93,7 @@ int main() {
 
 To compile and run a program it may be required to add `/usr/local/include/` to your include path and `/usr/local/lib` to your library path.
 Compiling and running should then work using
-```bash
+```
 g++ -I/usr/local/include/qd/ -L/usr/local/lib/ -Wl,-rpath=/usr/local/lib/ myprogram.cpp -pthread -lqd -o myprogram
 ./myprogram
 ```
@@ -102,7 +102,7 @@ Advanced Configuration
 ----------------------
 
 If required, you can adjust some settings in CMake:
-```bash
+```
 cmake -DQD_DEBUG=OFF                     \
       -DQD_TESTS=ON                      \
       -DQD_USE_LIBNUMA=ON                \
