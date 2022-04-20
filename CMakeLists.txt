@@ -1,8 +1,5 @@
-cmake_minimum_required(VERSION 2.8)
-project(QDLibrary)
-# The version number.
-set(QD_VERSION_MAJOR 0)
-set(QD_VERSION_MINOR 1)
+cmake_minimum_required(VERSION 3.3)
+project(QDLibrary VERSION 0.1)
 
 set(DEFAULT_C_FLAGS "-std=c11 -pthread")
 set(DEFAULT_CXX_FLAGS "-std=c++11 -pthread")
@@ -13,7 +10,7 @@ option(QD_DEBUG
 if(QD_DEBUG)
 	set(DEFAULT_C_FLAGS "${DEFAULT_C_FLAGS} -O0 -g -Wall -Wextra -Werror")
 	set(DEFAULT_CXX_FLAGS
-		"${DEFAULT_CXX_FLAGS} -O0 -g -Wall -Wextra -Werror")
+		"${DEFAULT_CXX_FLAGS} -O0 -g -Wall -Wextra -Werror -Wno-unused-private-field")
 	set(DEFAULT_LINK_FLAGS "${DEFAULT_LINK_FLAGS} -g -Wall -Wextra -Werror")
 else(QD_DEBUG)
 	set(DEFAULT_C_FLAGS "${DEFAULT_C_FLAGS} -O3")

@@ -30,8 +30,8 @@ class LockTest : public LockTestBase<Lock> {};
 template <typename DelegationLock>
 class DelegationTest : public LockTestBase<DelegationLock> {};
 
-TYPED_TEST_CASE_P(LockTest);
-TYPED_TEST_CASE_P(DelegationTest);
+TYPED_TEST_SUITE_P(LockTest);
+TYPED_TEST_SUITE_P(DelegationTest);
 
 /**
  * @brief Tests lock functionality
@@ -74,7 +74,7 @@ TYPED_TEST_P(LockTest, LockSpawnManyThread) {
 	}
 	ASSERT_EQ(*counter, threadcount);
 }
-REGISTER_TYPED_TEST_CASE_P(LockTest, LockSpawnThread, LockSpawnManyThread);
+REGISTER_TYPED_TEST_SUITE_P(LockTest, LockSpawnThread, LockSpawnManyThread);
 
 /**
  * @brief Tests delegation lock functionality
@@ -113,4 +113,4 @@ TYPED_TEST_P(DelegationTest, DelegateSpawnManyThread) {
 	}
 	ASSERT_EQ(*counter, threadcount);
 }
-REGISTER_TYPED_TEST_CASE_P(DelegationTest, DelegateSpawnThread, DelegateSpawnManyThread);
+REGISTER_TYPED_TEST_SUITE_P(DelegationTest, DelegateSpawnThread, DelegateSpawnManyThread);

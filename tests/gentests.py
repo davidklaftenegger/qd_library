@@ -87,7 +87,7 @@ def roundrobin_tests(tests, split_typelists):
 		print("typedef ::testing::Types <", file=f)
 		print(", \n".join(types), file=f)
 		print("> GeneratedTypes{0};".format(str(cnt)), file=f)
-		print("INSTANTIATE_TYPED_TEST_CASE_P({1}, {0}, GeneratedTypes{2});".format(tests, name, str(cnt)), file=f)
+		print("INSTANTIATE_TYPED_TEST_SUITE_P({1}, {0}, GeneratedTypes{2});".format(tests, name, str(cnt)), file=f)
 		cnt = cnt + 1
 		f.close()
 
