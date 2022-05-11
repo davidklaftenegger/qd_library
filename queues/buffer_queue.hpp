@@ -34,6 +34,13 @@ class buffer_queue {
 		buffer_queue() : counter(ARRAY_SIZE), closed(status::CLOSED), sizes(new std::map<ftype, int>), functions(new std::map<int, ftype>), rev_functions(new std::map<ftype, int>), function_idx(1) {
 			std::fill(&buffer_array[0], &buffer_array[ARRAY_SIZE], 0);
 		}
+
+		~buffer_queue() {
+			delete sizes.load();
+			delete functions.load();
+			delete rev_functions.load();
+		}
+
 		/** opens the queue */
 		void open() {
 			counter.store(0, std::memory_order_relaxed);

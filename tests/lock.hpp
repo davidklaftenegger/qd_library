@@ -50,6 +50,7 @@ TYPED_TEST_P(LockTest, LockSpawnThread) {
 	
 	threads[0].join();
 	ASSERT_EQ(*counter, 1);
+	delete counter;
 }
 
 /**
@@ -73,6 +74,7 @@ TYPED_TEST_P(LockTest, LockSpawnManyThread) {
 		t.join();
 	}
 	ASSERT_EQ(*counter, threadcount);
+	delete counter;
 }
 REGISTER_TYPED_TEST_SUITE_P(LockTest, LockSpawnThread, LockSpawnManyThread);
 
@@ -91,6 +93,7 @@ TYPED_TEST_P(DelegationTest, DelegateSpawnThread) {
 	
 	threads[0].join();
 	ASSERT_EQ(*counter, 1);
+	delete counter;
 }
 
 /**
@@ -112,5 +115,6 @@ TYPED_TEST_P(DelegationTest, DelegateSpawnManyThread) {
 		t.join();
 	}
 	ASSERT_EQ(*counter, threadcount);
+	delete counter;
 }
 REGISTER_TYPED_TEST_SUITE_P(DelegationTest, DelegateSpawnThread, DelegateSpawnManyThread);
