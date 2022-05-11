@@ -10,7 +10,7 @@ option(QD_DEBUG
 if(QD_DEBUG)
 	set(DEFAULT_C_FLAGS "${DEFAULT_C_FLAGS} -O0 -g -Wall -Wextra -Werror")
 	set(DEFAULT_CXX_FLAGS
-		"${DEFAULT_CXX_FLAGS} -O0 -g -Wall -Wextra -Werror -Wno-unused-private-field")
+		"${DEFAULT_CXX_FLAGS} -O0 -g -Wall -Wextra -Werror -Wno-unused-private-field -fsanitize=undefined -fsanitize=address")
 	set(DEFAULT_LINK_FLAGS "${DEFAULT_LINK_FLAGS} -g -Wall -Wextra -Werror")
 else(QD_DEBUG)
 	set(DEFAULT_C_FLAGS "${DEFAULT_C_FLAGS} -O3")
