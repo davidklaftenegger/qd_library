@@ -6,11 +6,21 @@
 #include<mutex>
 #include<queue>
 
+/**
+ * @brief a simple lock-based queue
+ * @note this is not a tantrum queue, and thus cannot provide starvation freedom guarantees
+ */
 class simple_locked_queue {
+	/** @brief internal lock to protect the queue */
 	std::mutex lock;
+
+	/** @brief internal queue */
 	std::queue<std::array<char, 128>> queue;
+
+	/** @brief convenience type alias for managing the lock */
 	typedef std::lock_guard<std::mutex> scoped_guard;
-	
+
+	/** @brief type alias for stored function type */
 	typedef void(*ftype)(char*);
 	
 	/* some constants */
