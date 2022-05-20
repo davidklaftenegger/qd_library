@@ -7,6 +7,8 @@
 #include<iostream>
 #include<typeinfo>
 
+#include "queues.hpp"
+
 namespace qd {
 	namespace queues {
 
@@ -18,9 +20,6 @@ namespace qd {
 		class entry_queue {
 			/** type for the size field for queue entries, loads must not be optimized away in flush */
 			typedef std::atomic<long> sizetype;
-
-			/** type for function pointers to be stored in this queue */
-			typedef void(*ftype)(char*);
 
 			struct entry_t {
 				std::atomic<ftype> fun;
@@ -34,9 +33,6 @@ namespace qd {
 				forwardall(idx, offset+sizeof(p), std::forward<Ts>(ts)...);
 			}
 			public:
-				/** constants for current state of the queue */
-				enum class status : long { OPEN=0, SUCCESS=0, FULL, CLOSED };
-
 				entry_queue() : counter(ENTRIES), closed(status::CLOSED) {}
 				/** opens the queue */
 				void open() {

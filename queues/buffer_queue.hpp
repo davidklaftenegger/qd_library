@@ -6,7 +6,9 @@
 #include<atomic>
 #include<map>
 #include<stack>
+
 #include "util/type_tools.hpp"
+#include "queues.hpp"
 
 namespace qd {
 	namespace queues {
@@ -22,18 +24,11 @@ namespace qd {
 			/** type for the size field for queue entries, loads must not be optimized away in flush */
 			typedef std::atomic<s_type> sizetype;
 
-			/** type for function pointers to be stored in this queue */
-		//	typedef std::function<void(char*)> ftype;
-			typedef void(*ftype)(char*);
-
 			struct entry_t {
 				std::atomic<int> fun;
 				char buf[28];
 			};
 			public:
-				/** constants for current state of the queue */
-				enum class status { OPEN=0, SUCCESS=0, FULL, CLOSED };
-
 				buffer_queue() : counter(ARRAY_SIZE), closed(status::CLOSED), sizes(new std::map<ftype, int>), functions(new std::map<int, ftype>), rev_functions(new std::map<ftype, int>), function_idx(1) {
 					std::fill(&buffer_array[0], &buffer_array[ARRAY_SIZE], 0);
 				}
