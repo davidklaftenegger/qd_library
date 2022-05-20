@@ -5,7 +5,9 @@
 #include<array>
 #include<atomic>
 #include<new>
+
 #include "util/type_tools.hpp"
+#include "queues.hpp"
 
 namespace qd {
 	namespace queues {
@@ -29,13 +31,7 @@ namespace qd {
 			/** type for the size field for queue entries, loads must not be optimized away in flush */
 			typedef std::atomic<char*> sizetype;
 
-			/** type for function pointers to be stored in this queue */
-			typedef void(*ftype)(char*);
-
 			public:
-				/** constants for current state of the queue */
-				enum class status { OPEN=0, SUCCESS=0, FULL, CLOSED };
-
 				dual_buffer_queue() : counter(ENTRIES) {}
 				/** opens the queue */
 				void open() {

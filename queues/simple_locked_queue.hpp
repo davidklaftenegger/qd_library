@@ -6,6 +6,8 @@
 #include<mutex>
 #include<queue>
 
+#include "queues.hpp"
+
 namespace qd {
 	namespace queues {
 
@@ -22,13 +24,6 @@ namespace qd {
 
 			/** @brief convenience type alias for managing the lock */
 			typedef std::lock_guard<std::mutex> scoped_guard;
-
-			/** @brief type alias for stored function type */
-			typedef void(*ftype)(char*);
-
-			/* some constants */
-			static const bool CLOSED = false;
-			static const bool SUCCESS = true;
 
 			void forwardall(char*, long i) {
 				assert(i <= 120);
@@ -59,7 +54,7 @@ namespace qd {
 					scoped_guard l(lock);
 					queue.push(val);
 					forwardall(queue.back().data(), 0, std::move(op), std::move(*ps)...);
-					return SUCCESS;
+					return status::SUCCESS;
 				}
 
 				/** execute all stored operations */
