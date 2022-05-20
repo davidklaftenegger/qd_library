@@ -2,7 +2,7 @@
 
 import itertools
 
-atomic_instr = ["atomic_instruction_policy_t::use_fetch_and_add", "atomic_instruction_policy_t::use_compare_and_swap"]
+atomic_instr = ["qd::queues::atomic_instruction_policy_t::use_fetch_and_add", "qd::queues::atomic_instruction_policy_t::use_compare_and_swap"]
 
 starvation = ["starvation_policy_t::starvation_free", "starvation_policy_t::may_starve"]
 locks = [
@@ -19,17 +19,10 @@ buffer_q = ["buffer_queue<{0}>".format(x) for x in [262144, 262139]]
 entry_q = ["entry_queue<{0}, {1}>".format(x,y) for (x,y) in itertools.product([4096], [32])]
 dual_buffer_q = ["dual_buffer_queue<{0}, {1}, {2}>".format(x,y,z) for ((x,y),z) in itertools.product([(16384, 7), (16384, 8), (16000, 7), (16000, 8), (4096, 32), (6144, 24)], atomic_instr)]
 
-#queues = ["simple_locked_queue"]
-queues = []
-queues.extend(buffer_q)
-queues.extend(entry_q)
-queues.extend(dual_buffer_q)
-
-
-#SQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, ["simple_locked_queue"], starvation)]
-BQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, buffer_q, starvation)]
-EQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, entry_q, starvation)]
-DBQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, dual_buffer_q, starvation)]
+#SQT = ["qdlock_impl<{0}, qd::queues::{1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, simple_q, starvation)]
+BQT = ["qdlock_impl<{0}, qd::queues::{1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, buffer_q, starvation)]
+EQT = ["qdlock_impl<{0}, qd::queues::{1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, entry_q, starvation)]
+DBQT = ["qdlock_impl<{0}, qd::queues::{1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, dual_buffer_q, starvation)]
 
 #for q in queues:
 #    print("{0}, \\".format(q))
