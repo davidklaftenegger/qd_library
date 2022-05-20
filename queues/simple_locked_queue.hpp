@@ -13,7 +13,8 @@ namespace qd {
 
 		/**
 		 * @brief a simple lock-based queue
-		 * @note this is not a tantrum queue, and thus cannot provide starvation freedom guarantees
+		 * @note this tantrum queue does not limit the number of entries,
+		 *       so it cannot provide starvation freedom guarantees
 		 */
 		class simple_locked_queue {
 			/** @brief internal lock to protect the queue */
@@ -21,6 +22,9 @@ namespace qd {
 
 			/** @brief internal queue */
 			std::queue<std::array<char, 128>> queue;
+
+			/** @brief current open/closed state */
+			status state = status::CLOSED;
 
 			/** @brief convenience type alias for managing the lock */
 			typedef std::lock_guard<std::mutex> scoped_guard;
@@ -38,8 +42,8 @@ namespace qd {
 			}
 			public:
 				void open() {
-					/* TODO this function should not even be here */
-					/* no-op as this is an "infinite" queue that always accepts more data */
+					scoped_guard l(lock);
+					state = status::OPEN;
 				}
 
 				/**
@@ -50,8 +54,12 @@ namespace qd {
 				 */
 				template<typename... Ps>
 				status enqueue(ftype op, Ps*... ps) {
+
 					std::array<char, 128> val;
 					scoped_guard l(lock);
+					if(state == status::CLOSED) {
+						return status::CLOSED;
+					}
 					queue.push(val);
 					forwardall(queue.back().data(), 0, std::move(op), std::move(*ps)...);
 					return status::SUCCESS;
@@ -60,6 +68,7 @@ namespace qd {
 				/** execute all stored operations */
 				void flush() {
 					scoped_guard l(lock);
+					state = status::CLOSED;
 					while(!queue.empty()) {
 						auto operation = queue.front();
 						char* ptr = operation.data();
