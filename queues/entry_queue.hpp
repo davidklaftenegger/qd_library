@@ -18,7 +18,7 @@ class entry_queue {
 
 	/** type for function pointers to be stored in this queue */
 	typedef void(*ftype)(char*);
-	
+
 	struct entry_t {
 		std::atomic<ftype> fun;
 		char buf[BUFFER_SIZE];
@@ -32,7 +32,7 @@ class entry_queue {
 	}
 	public:
 		/** constants for current state of the queue */
-		enum class status : long { OPEN=0, SUCCESS=0, FULL, CLOSED }; 
+		enum class status : long { OPEN=0, SUCCESS=0, FULL, CLOSED };
 
 		entry_queue() : counter(ENTRIES), closed(status::CLOSED) {}
 		/** opens the queue */

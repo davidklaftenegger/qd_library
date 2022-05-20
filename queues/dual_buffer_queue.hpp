@@ -28,10 +28,10 @@ class dual_buffer_queue {
 
 	/** type for function pointers to be stored in this queue */
 	typedef void(*ftype)(char*);
-	
+
 	public:
 		/** constants for current state of the queue */
-		enum class status { OPEN=0, SUCCESS=0, FULL, CLOSED }; 
+		enum class status { OPEN=0, SUCCESS=0, FULL, CLOSED };
 
 		dual_buffer_queue() : counter(ENTRIES) {}
 		/** opens the queue */

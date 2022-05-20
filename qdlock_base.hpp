@@ -623,7 +623,7 @@ class qdlock_base {
 
 		template<typename Function, Function f, typename Promise, typename... Ps>
 		bool try_enqueue(int attempts, Promise* result, Ps... ps) {
-			typename DQueue::status status = DQueue::status::CLOSED;;
+			typename DQueue::status status = DQueue::status::CLOSED;
 			for(int i = 1; i <= attempts; i++) {
 				status = enqueue<Function, f>(result, ps...);
 				if(status == DQueue::status::SUCCESS) {
