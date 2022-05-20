@@ -30,8 +30,8 @@ class extended_lock : public Lock {
 };
 
 using internal_lock = mcs_futex_lock;
-using qdlock = qdlock_impl<mcs_futex_lock, dual_buffer_queue<6144, 24, atomic_instruction_policy_t::use_fetch_and_add>, starvation_policy_t::starvation_free>;
-using mrqdlock = mrqdlock_impl<internal_lock, dual_buffer_queue<6144,24>, reader_groups<64>, 65536>;
+using qdlock = qdlock_impl<mcs_futex_lock, qd::queues::dual_buffer_queue<6144, 24, qd::queues::atomic_instruction_policy_t::use_fetch_and_add>, starvation_policy_t::starvation_free>;
+using mrqdlock = mrqdlock_impl<internal_lock, qd::queues::dual_buffer_queue<6144,24>, reader_groups<64>, 65536>;
 //using qd_condition_variable = qd_condition_variable_impl<mutex_lock, simple_locked_queue>;
 
 #define DELEGATE_F(function, ...) template delegate_f<decltype(function), function>(__VA_ARGS__)
