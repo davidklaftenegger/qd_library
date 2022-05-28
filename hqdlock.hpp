@@ -1,6 +1,8 @@
 #ifndef qd_hqdlock_hpp
 #define qd_hqdlock_hpp qd_hqdlock_hpp
 
+#include <vector>
+
 #include <sched.h>
 #include <unistd.h>
 #ifdef QD_USE_LIBNUMA
