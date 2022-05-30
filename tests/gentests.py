@@ -6,13 +6,13 @@ atomic_instr = ["qd::queues::atomic_instruction_policy_t::use_fetch_and_add", "q
 
 starvation = ["starvation_policy_t::starvation_free", "starvation_policy_t::may_starve"]
 locks = [
-	"extended_lock<pthreads_lock>",
-	"extended_lock<tatas_lock>",
-	"mcs_lock",
-	"extended_lock<mutex_lock>",
-	"futex_lock",
-	"mcs_futex_lock",
-	"ticket_futex_lock"
+	"qd::locks::extended_lock<qd::locks::pthreads_lock>",
+	"qd::locks::extended_lock<qd::locks::tatas_lock>",
+	"qd::locks::mcs_lock",
+	"qd::locks::extended_lock<qd::locks::mutex_lock>",
+	"qd::locks::futex_lock",
+	"qd::locks::mcs_futex_lock",
+	"qd::locks::ticket_futex_lock"
 	]
 
 buffer_q = ["buffer_queue<{0}>".format(x) for x in [262144, 262139]]
