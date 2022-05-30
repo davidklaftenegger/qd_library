@@ -68,6 +68,7 @@ for i in range(filelimit):
 	fname = "generated_test{0}.cpp".format(str(i))
 	f = open(fname, 'w');
 	print("#include<lock.hpp>", file=f)
+	print("using namespace qd;", file=f)
 	f.close()
 
 def roundrobin_tests(tests, split_typelists):
