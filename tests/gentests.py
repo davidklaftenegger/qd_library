@@ -6,10 +6,10 @@ atomic_instr = ["qd::queues::atomic_instruction_policy_t::use_fetch_and_add", "q
 
 starvation = ["starvation_policy_t::starvation_free", "starvation_policy_t::may_starve"]
 locks = [
-	"qd::locks::extended_lock<qd::locks::pthreads_lock>",
-	"qd::locks::extended_lock<qd::locks::tatas_lock>",
+	"qd::locks::pthreads_lock",
+	"qd::locks::tatas_lock",
 	"qd::locks::mcs_lock",
-	"qd::locks::extended_lock<qd::locks::mutex_lock>",
+	"qd::locks::mutex_lock",
 	"qd::locks::futex_lock",
 	"qd::locks::mcs_futex_lock",
 	"qd::locks::ticket_futex_lock"

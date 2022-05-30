@@ -22,6 +22,9 @@ namespace qd {
 						return false;
 					}
 				}
+				bool try_lock_or_wait() {
+					return this->try_lock();
+				}
 				void unlock() {
 					locked.store(false, std::memory_order_release);
 					pthread_mutex_unlock(&mutex);

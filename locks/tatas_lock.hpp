@@ -18,6 +18,9 @@ namespace qd {
 					if(is_locked()) return false;
 					return !locked.exchange(true, std::memory_order_acq_rel);
 				}
+				bool try_lock_or_wait() {
+					return this->try_lock();
+				}
 				void unlock() {
 					locked.store(false, std::memory_order_release);
 				}

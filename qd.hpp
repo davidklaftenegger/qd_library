@@ -21,18 +21,6 @@
 
 #include "qd_condition_variable.hpp"
 
-namespace qd {
-	namespace locks {
-		template<typename Lock>
-		class extended_lock : public Lock {
-			public:
-				bool try_lock_or_wait() {
-					return this->try_lock();
-				}
-		};
-	}
-}
-
 using internal_lock = qd::locks::mcs_futex_lock;
 using qdlock = qdlock_impl<qd::locks::mcs_futex_lock, qd::queues::dual_buffer_queue<6144, 24, qd::queues::atomic_instruction_policy_t::use_fetch_and_add>, starvation_policy_t::starvation_free>;
 using mrqdlock = mrqdlock_impl<internal_lock, qd::queues::dual_buffer_queue<6144,24>, reader_groups<64>, 65536>;
