@@ -1,6 +1,7 @@
-#ifndef qd_qdlock_hpp
-#define qd_qdlock_hpp qdlock_hpp
+#ifndef QDLOCK_HPP_
+#define QDLOCK_HPP_
 
+#include <utility>
 #include "qdlock_base.hpp"
 
 namespace qd {
@@ -148,4 +149,4 @@ namespace qd {
 
 } // namespace qd
 
-#endif /* qd_qdlock_hpp */
+#endif // QDLOCK_HPP_

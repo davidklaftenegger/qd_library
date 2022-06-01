@@ -1,13 +1,15 @@
 #ifndef qd_mcs_futex_lock_hpp
 #define qd_mcs_futex_lock_hpp qd_futex_lock_hpp
 
-#include<atomic>
+// C headers
 #include<unistd.h>
 #include<linux/futex.h>
+#include<sys/param.h>
+#include<sys/syscall.h>
+// C++ headers
+#include<atomic>
 #include<map>
 #include<stack>
-#include<sys/syscall.h>
-#include<sys/param.h>
 #include<thread>
 #include "util/pause.hpp"
 

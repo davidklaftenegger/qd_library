@@ -5,6 +5,7 @@
 #include<cassert>
 #include<mutex>
 #include<queue>
+#include<utility>
 
 #include "queues.hpp"
 
@@ -28,7 +29,7 @@ namespace qd {
 			void forwardall(char*, long i) {
 				assert(i <= 120);
 				if(i > 120) throw "up";
-			};
+			}
 			template<typename P, typename... Ts>
 			void forwardall(char* buffer, long offset, P&& p, Ts&&... ts) {
 				assert(offset <= 120);

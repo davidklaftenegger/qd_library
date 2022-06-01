@@ -12,7 +12,7 @@ namespace qd {
 			std::atomic<bool> locked;
 			std::mutex mutex;
 			public:
-				mutex_lock() : locked(false), mutex() {};
+				mutex_lock() : locked(false), mutex() {}
 				mutex_lock(mutex_lock&) = delete; /* TODO? */
 				bool try_lock() {
 					if(!is_locked() && mutex.try_lock()) {

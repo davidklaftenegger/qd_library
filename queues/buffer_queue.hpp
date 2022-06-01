@@ -6,6 +6,7 @@
 #include<atomic>
 #include<map>
 #include<stack>
+#include<utility>
 
 #include "util/type_tools.hpp"
 #include "queues.hpp"
@@ -45,7 +46,7 @@ namespace qd {
 					closed.store(status::OPEN, std::memory_order_relaxed);
 				}
 
-				void forwardall(char*) {};
+				void forwardall(char*) {}
 				template<typename P, typename... Ts>
 				void forwardall(char* offset, P&& p, Ts&&... ts) {
 					auto ptr = reinterpret_cast<P*>(offset);

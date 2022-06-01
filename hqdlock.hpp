@@ -1,13 +1,15 @@
-#ifndef qd_hqdlock_hpp
-#define qd_hqdlock_hpp qd_hqdlock_hpp
+#ifndef HQDLOCK_HPP_
+#define HQDLOCK_HPP_
 
-#include <vector>
-
+// C headers
 #include <sched.h>
 #include <unistd.h>
 #ifdef QD_USE_LIBNUMA
 #include <numa.h>
 #endif
+// C++ headers
+#include <vector>
+#include <utility>
 #include "qdlock_base.hpp"
 
 namespace qd {
@@ -32,10 +34,10 @@ namespace qd {
 		struct hierarchy_sync {
 			static void lock(base* t) {
 				reinterpret_cast<this_t>(t->__data)->global_lock.lock();
-			};
+			}
 			static void unlock(base* t) {
 				reinterpret_cast<this_t>(t->__data)->global_lock.unlock();
-			};
+			}
 		};
 		typedef hierarchy_sync hierarchy_t;
 		typedef typename base::no_reader_sync reader_indicator_t;
@@ -231,10 +233,10 @@ namespace qd {
 		struct hierarchy_sync {
 			static void lock(base* t) {
 				reinterpret_cast<this_t>(t->__data)->global_lock.lock();
-			};
+			}
 			static void unlock(base* t) {
 				reinterpret_cast<this_t>(t->__data)->global_lock.unlock();
-			};
+			}
 		};
 		typedef hierarchy_sync hierarchy_t;
 		
@@ -428,4 +430,4 @@ namespace qd {
 
 } // namespace qd
 
-#endif /* qd_hqdlock_hpp */
+#endif // HQDLOCK_HPP_

@@ -12,7 +12,7 @@ namespace qd {
 		class tatas_lock {
 			std::atomic<bool> locked; /* TODO can std::atomic_flag be used? */
 			public:
-				tatas_lock() : locked(false) {};
+				tatas_lock() : locked(false) {}
 				tatas_lock(tatas_lock&) = delete; /* TODO? */
 				bool try_lock() {
 					if(is_locked()) return false;

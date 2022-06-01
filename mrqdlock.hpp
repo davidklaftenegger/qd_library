@@ -1,8 +1,9 @@
-#ifndef qd_mrqdlock_hpp
-#define qd_mrqdlock_hpp qd_mrqdlock_hpp
+#ifndef MRQDLOCK_HPP_
+#define MRQDLOCK_HPP_
 
 #include<array>
 #include<atomic>
+#include<utility>
 #include "readindicator/reader_groups.hpp"
 #include "util/pause.hpp"
 #include "qdlock_base.hpp"
@@ -175,4 +176,4 @@ namespace qd {
 
 } // namespace qd
 
-#endif /* qd_mrqdlock_hpp */
+#endif // MRQDLOCK_HPP_

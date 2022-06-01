@@ -6,6 +6,7 @@
 #include<atomic>
 #include<iostream>
 #include<typeinfo>
+#include<utility>
 
 #include "queues.hpp"
 
@@ -25,7 +26,7 @@ namespace qd {
 				std::atomic<ftype> fun;
 				char buf[BUFFER_SIZE];
 			};
-			void forwardall(long, long) {};
+			void forwardall(long, long) {}
 			template<typename P, typename... Ts>
 			void forwardall(long idx, long offset, P&& p, Ts&&... ts) {
 				auto ptr = reinterpret_cast<P*>(&entry_array[idx].buf[offset]);

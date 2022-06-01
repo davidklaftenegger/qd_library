@@ -1,10 +1,13 @@
 #ifndef qd_futex_lock_hpp
 #define qd_futex_lock_hpp qd_futex_lock_hpp
 
-#include<atomic>
+// C headers
 #include<unistd.h>
 #include<linux/futex.h>
 #include<sys/syscall.h>
+
+// C++ headers
+#include<atomic>
 
 namespace qd {
 	namespace locks {

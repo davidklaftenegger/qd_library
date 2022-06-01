@@ -5,6 +5,7 @@
 #include<array>
 #include<atomic>
 #include<new>
+#include<utility>
 
 #include "util/type_tools.hpp"
 #include "queues.hpp"
@@ -38,7 +39,7 @@ namespace qd {
 					counter.store(0, std::memory_order_relaxed);
 				}
 
-				void forwardall(unsigned) {};
+				void forwardall(unsigned) {}
 				template<typename P, typename... Ts>
 				void forwardall(unsigned offset, P&& p, Ts&&... ts) {
 					auto ptr = reinterpret_cast<P*>(&buffer_array[offset]);
@@ -104,7 +105,7 @@ namespace qd {
 							while(!fun) {
 								qd::pause();
 								fun = entries[index].f.load(std::memory_order_acquire);
-							};
+							}
 							/* call functor with pointer to promise (of unknown type) */
 							unsigned req_entries = *reinterpret_cast<unsigned*>(&buffer_array[index*ENTRY_SIZE]);
 							fun(&buffer_array[index*ENTRY_SIZE + sizeof(req_entries)]);

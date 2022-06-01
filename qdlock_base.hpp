@@ -1,9 +1,10 @@
-#ifndef qdlock_base_hpp
-#define qdlock_base_hpp qdlock_base_hpp
+#ifndef QDLOCK_BASE_HPP_
+#define QDLOCK_BASE_HPP_
 
 #include<cstddef>
 #include<future>
 #include<type_traits>
+#include<utility>
 
 #include "queues/queues.hpp"
 #include "util/pause.hpp"
@@ -15,7 +16,7 @@ namespace qd {
 	template<typename R, template<class> class Promise = std::promise>
 	class unpack_promise : public Promise<R> {
 		public:
-			unpack_promise(char* pptr) : Promise<R>(std::move(*reinterpret_cast<Promise<R>*>(pptr))) {}
+			explicit unpack_promise(char* pptr) : Promise<R>(std::move(*reinterpret_cast<Promise<R>*>(pptr))) {}
 			~unpack_promise() {} /* automatically destructs superclass */
 			unpack_promise() = delete; /* meaningless */
 			unpack_promise(unpack_promise&) = delete; /* not possible */
@@ -560,12 +561,12 @@ namespace qd {
 			};
 
 			struct no_reader_sync {
-				static void wait_writers(qdlock_base<MLock, DQueue, starvation_policy>*) {};
-				static void wait_readers(qdlock_base<MLock, DQueue, starvation_policy>*) {};
+				static void wait_writers(qdlock_base<MLock, DQueue, starvation_policy>*) {}
+				static void wait_readers(qdlock_base<MLock, DQueue, starvation_policy>*) {}
 			};
 			struct no_hierarchy_sync {
-				static void lock(qdlock_base<MLock, DQueue, starvation_policy>*) {};
-				static void unlock(qdlock_base<MLock, DQueue, starvation_policy>*) {};
+				static void lock(qdlock_base<MLock, DQueue, starvation_policy>*) {}
+				static void unlock(qdlock_base<MLock, DQueue, starvation_policy>*) {}
 			};
 #if 0
 			template<typename T>
@@ -573,7 +574,7 @@ namespace qd {
 				wrapped_promise** co_owner;
 				public:
 					wrapped_promise() = delete;
-					wrapped_promise(wrapped_promise** ptr) : co_owner(ptr) {
+					explicit wrapped_promise(wrapped_promise** ptr) : co_owner(ptr) {
 						*co_owner = this;
 					}
 					wrapped_promise(wrapped_promise&) = delete;
@@ -681,4 +682,4 @@ namespace qd {
 
 } // namespace qd
 
-#endif /* qdlock_base_hpp */
+#endif // QDLOCK_BASE_HPP_

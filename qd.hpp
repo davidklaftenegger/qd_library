@@ -1,5 +1,5 @@
-#ifndef qd_qd_hpp
-#define qd_qd_hpp qd_qd_hpp
+#ifndef QD_HPP_
+#define QD_HPP_
 
 #include "locks/waitable_lock.hpp"
 #include "locks/pthreads_lock.hpp"
@@ -37,4 +37,4 @@ namespace qd {
 using qdlock = qd::qdlock;
 using mrqdlock = qd::mrqdlock;
 
-#endif /* qd_qd_hpp */
+#endif // QD_HPP_

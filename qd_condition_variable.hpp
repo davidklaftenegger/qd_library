@@ -1,6 +1,7 @@
-#ifndef qd_condition_variable_hpp
-#define qd_condition_variable_hpp qd_condition_variable_hpp
+#ifndef QD_CONDITION_VARIABLE_HPP_
+#define QD_CONDITION_VARIABLE_HPP_
 
+#include <utility>
 #include "util/pause.hpp"
 #include "qdlock_base.hpp"
 
@@ -73,4 +74,4 @@ namespace qd {
 
 } // namespace qd
 
-#endif
+#endif // QD_CONDITION_VARIABLE_HPP_
