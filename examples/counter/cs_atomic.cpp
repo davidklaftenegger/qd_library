@@ -1,6 +1,4 @@
 #include<atomic>
-#include<iostream>
-
 #include<chrono>
 #include<iostream>
 
