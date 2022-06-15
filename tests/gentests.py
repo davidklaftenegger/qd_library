@@ -6,52 +6,40 @@ atomic_instr = ["atomic_instruction_policy_t::use_fetch_and_add", "atomic_instru
 
 starvation = ["starvation_policy_t::starvation_free", "starvation_policy_t::may_starve"]
 locks = [
-	"extended_lock<pthreads_lock>",
-	"extended_lock<tatas_lock>",
+	"pthreads_lock",
+	"tatas_lock",
 	"mcs_lock",
-	"extended_lock<mutex_lock>",
+	"mutex_lock",
 	"futex_lock",
 	"mcs_futex_lock",
 	"ticket_futex_lock"
 	]
 
+simple_q = ["simple_locked_queue"]
 buffer_q = ["buffer_queue<{0}>".format(x) for x in [262144, 262139]]
 entry_q = ["entry_queue<{0}, {1}>".format(x,y) for (x,y) in itertools.product([4096], [32])]
 dual_buffer_q = ["dual_buffer_queue<{0}, {1}, {2}>".format(x,y,z) for ((x,y),z) in itertools.product([(16384, 7), (16384, 8), (16000, 7), (16000, 8), (4096, 32), (6144, 24)], atomic_instr)]
 
-#queues = ["simple_locked_queue"]
-queues = []
-queues.extend(buffer_q)
-queues.extend(entry_q)
-queues.extend(dual_buffer_q)
-
-
-#SQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, ["simple_locked_queue"], starvation)]
+SQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, simple_q, starvation)]
 BQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, buffer_q, starvation)]
 EQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, entry_q, starvation)]
 DBQT = ["qdlock_impl<{0}, {1}, {2}>".format(L, Q, S) for (L,Q,S) in itertools.product(locks, dual_buffer_q, starvation)]
 
-#for q in queues:
-#    print("{0}, \\".format(q))
-
-#print("#define QDTypes \\\nqdlock, \\")
-#print(", \\\n".join(qd_impls))
-
 lock_typelists = [
 	("StandardLocks", locks),
-#	("SimpleQueue", SQT),
-	("BufferQueue", BQT), 
-	("EntryQueue", EQT), 
-	("DualBufferQueue", DBQT) 
+	("SimpleQueue", SQT),
+	("BufferQueue", BQT),
+	("EntryQueue", EQT),
+	("DualBufferQueue", DBQT),
 	]
 delegation_typelists = [
-#	("SimpleQueue", SQT),
-	("BufferQueue", BQT), 
-	("EntryQueue", EQT), 
-	("DualBufferQueue", DBQT) 
+	("SimpleQueue", SQT),
+	("BufferQueue", BQT),
+	("EntryQueue", EQT),
+	("DualBufferQueue", DBQT),
 	]
 
-def split_typelists(typelists): 
+def split_typelists(typelists):
 	splitpoint = 16
 	split_typelists = []
 	for (name, types) in typelists:
@@ -75,6 +63,9 @@ for i in range(filelimit):
 	fname = "generated_test{0}.cpp".format(str(i))
 	f = open(fname, 'w');
 	print("#include<lock.hpp>", file=f)
+	print("using namespace qd;", file=f)
+	print("using namespace qd::locks;", file=f)
+	print("using namespace qd::queues;", file=f)
 	f.close()
 
 def roundrobin_tests(tests, split_typelists):
