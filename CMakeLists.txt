@@ -10,7 +10,7 @@ option(QD_DEBUG
 if(QD_DEBUG)
 	set(DEFAULT_C_FLAGS "${DEFAULT_C_FLAGS} -O0 -g")
 	set(DEFAULT_CXX_FLAGS
-		"${DEFAULT_CXX_FLAGS} -O0 -g -Wno-unused-private-field -fsanitize=undefined -fsanitize=address")
+		"${DEFAULT_CXX_FLAGS} -O0 -g -fsanitize=undefined -fsanitize=address")
 	set(DEFAULT_LINK_FLAGS "${DEFAULT_LINK_FLAGS} -g")
 else(QD_DEBUG)
 	set(DEFAULT_C_FLAGS "${DEFAULT_C_FLAGS} -O3")
