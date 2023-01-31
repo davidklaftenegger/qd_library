@@ -7,7 +7,7 @@
  * @brief lock class wrapper to add wait/notify functionality
  * @tparam Lock a locking class
  * @details This wrapper adds functionality to wait on each instance of a class
- *          without requireing a lock to be taken/released. This is useful when
+ *          without requiring a lock to be taken/released. This is useful when
  *          implementing another lock, so that spinning can be avoided.
  * @warning  This implementation relies on std::condition_variable_any not actually needing a lock,
  *       which violates its preconditions.

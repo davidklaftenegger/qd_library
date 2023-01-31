@@ -344,7 +344,7 @@ class qdlock_base {
 			r.set_value(f(std::move(ps)...));
 		}
 
-		/** alternative for operations witht a promise, case member function pointer and object specified */
+		/** alternative for operations with a promise, case member function pointer and object specified */
 		/* case 2Ba */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
 		auto execute(std::promise<typename std::result_of<Function(Ps...)>::type> r, Function&& f, O&& o, Ps&&... ps)
@@ -402,7 +402,7 @@ class qdlock_base {
 			r.set_value();
 		}
 
-		/** alternative for operations witht a promise, case member function pointer and object specified */
+		/** alternative for operations with a promise, case member function pointer and object specified */
 		/* case 2Bb */
 		template<typename Ignored, Ignored i, typename R, typename Function, typename O, typename... Ps>
 		auto execute(std::promise<void> r, Function&& f, O&& o, Ps&&... ps)

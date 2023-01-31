@@ -219,7 +219,7 @@ class mcs_futex_lock {
 
 
 		static_assert(sizeof(locked) == sizeof(field_t), "std::atomic<field_t> size differs from size of field_t. Your architecture does not support the MCS futex_lock");
-		static_assert(__BYTE_ORDER == __LITTLE_ENDIAN, "Your architecture's endianess is currently not supported. Please report this as a bug.");
+		static_assert(__BYTE_ORDER == __LITTLE_ENDIAN, "Your architecture's endianness is currently not supported. Please report this as a bug.");
 };
 
 #endif /* qd_mcs_futex_lock_hpp */

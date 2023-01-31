@@ -29,7 +29,7 @@ class qdlock_impl : private qdlock_base<MLock, DQueue, starvation_policy> {
 
 		/* the following delegate_XX functions are all specified twice:
 		 * First for a templated version, where a function is explicitly
-		 * given in the template argument list. (Porbably using a macro)
+		 * given in the template argument list. (Probably using a macro)
 		 * Second for a version where the function or functor is a
 		 * normal parameter to the delegate_XX function.
 		 *
