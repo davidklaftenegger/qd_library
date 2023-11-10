@@ -55,6 +55,9 @@ Installation
 ------------
 
 ```
+wget https://github.com/google/googletest/archive/release-1.7.0.tar.gz
+tar xzf release-1.7.0.tar.gz
+mv googletest-release-1.7.0 tests/gtest-1.7.0
 mkdir build
 cd build
 cmake ../
