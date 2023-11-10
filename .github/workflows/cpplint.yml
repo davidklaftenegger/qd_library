@@ -1,0 +1,10 @@
+name: cpplint
+on: [push, pull_request]
+jobs:
+  cpplint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+    - run: pip install cpplint
+    - run: cpplint --filter=-build,-legal,-readability,-runtime/explicit,-runtime/int,-runtime/references,-whitespace --exclude=tests --recursive .
