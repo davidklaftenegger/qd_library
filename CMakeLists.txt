@@ -5,6 +5,9 @@ set(DEFAULT_C_FLAGS "-std=c11 -pthread")
 set(DEFAULT_CXX_FLAGS "-std=c++11 -pthread")
 set(DEFAULT_LINK_FLAGS "")
 
+# enable clang-tidy checking
+set(CMAKE_CXX_CLANG_TIDY clang-tidy)
+
 option(QD_DEBUG
 	"Build the QD library without optimization and with debugging symbols" OFF)
 if(QD_DEBUG)
