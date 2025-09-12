@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.10)
 project(QDLibrary VERSION 0.1)
 
 set(DEFAULT_C_FLAGS "-std=c11 -pthread")
